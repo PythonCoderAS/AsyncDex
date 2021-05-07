@@ -77,8 +77,8 @@ class ContentRating(Enum):
     """A manga that is safe.
     
     .. note::
-        This is the only content rating that means a manga is safe for work. All other values are not safe for work (
-        NSFW).
+        This is the only content rating that means a manga is safe for work. All other values are not safe for work
+        (NSFW).
     """
     SUGGESTIVE = 'suggestive'
     """A manga that is suggestive.

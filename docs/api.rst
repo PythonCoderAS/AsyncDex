@@ -27,6 +27,26 @@ Exceptions
 .. autoexception:: asyncdex.exceptions.Unauthorized
     :members:
 
+Enums
++++++
+
+.. autoclass:: asyncdex.enum.Demographic
+    :members:
+
+.. autoclass:: asyncdex.enum.MangaStatus
+    :members:
+
+.. autoclass:: asyncdex.enum.FollowStatus
+    :members:
+
+.. autoclass:: asyncdex.enum.ContentRating
+    :members:
+
+.. autoclass:: asyncdex.enum.Visibility
+    :members:
+
+.. autoclass:: asyncdex.enum.Relationship
+    :members:
 
 Constants
 +++++++++
