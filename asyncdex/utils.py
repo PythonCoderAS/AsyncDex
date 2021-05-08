@@ -73,7 +73,7 @@ class DefaultAttrDict(AttrDict[_VT], Generic[_VT]):
     default: Callable[[], _VT]
     """A callable that accepts no arguments and returns an instance of the value's class."""
 
-    def __init__(self, /, mapping_or_iterable: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None, *,
+    def __init__(self, mapping_or_iterable: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None, *,
                  default: Callable[[], _VT]):
         if mapping_or_iterable:
             super().__init__(mapping_or_iterable)
