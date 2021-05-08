@@ -1,12 +1,16 @@
 import asyncio
-from types import TracebackType
 from datetime import datetime, timedelta
-from typing import Any, Mapping, Optional, Sequence, Type, Union
+from types import TracebackType
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import aiohttp
 
 from .constants import ratelimit_data, routes
-from .exceptions import Ratelimit, Unauthorized
+from .exceptions import InvalidID, Ratelimit, Unauthorized
+from .models.abc import Model
+from .models.author import Author
+from .models.manga import Manga
+from .models.tag import Tag
 from .ratelimit import Ratelimits
 from .utils import remove_prefix
 
@@ -68,11 +72,19 @@ class MangadexClient:
     anonymous_mode: bool
     """Whether or not the client is operating in **Anonymous Mode**, where it only accesses public endpoints."""
 
+    tag_cache: Dict[str, Tag]
+    """A cache of tags. This cache will be used to lower the amount of tag objects, and allows for easily updating 
+    the attributes of tags. This cache can be refreshed manually by either calling :meth:`.refresh_tag_cache` or 
+    fetching data for any tag object.
+    
+    .. versionadded:: 0.2
+    """
+
     @property
     def session_token(self) -> Optional[str]:
-        """The session token tht the client has obtained. This will be None when the client is operating in anonymous mode,
-         as well as if the client has not obtained a refresh token from the API or if it has been roughly 15 minutes
-         since the token was retrieved from the server."""
+        """The session token tht the client has obtained. This will be None when the client is operating in anonymous
+            mode, as well as if the client has not obtained a refresh token from the API or if it has been roughly 15
+            minutes since the token was retrieved from the server."""
         if datetime.utcnow() - self._session_token_acquired > timedelta(minutes=15, seconds=10):
             self._session_token = None
         return self._session_token
@@ -108,6 +120,7 @@ class MangadexClient:
         if anonymous:
             self.username = self.password = self.refresh_token = None
         self.ratelimits = Ratelimits(*ratelimit_data)
+        self.tag_cache = {}
         self._session_token: Optional[str] = None
         self._session_token_acquired: Optional[datetime] = datetime(year=2000, month=1, day=1)
         # This is the time when the token is acquired. The client will automatically vacate the token at 15 minutes
@@ -257,3 +270,129 @@ class MangadexClient:
         :rtype: str
         """
         return f"{type(self).__name__}(anonymous={self.anonymous_mode!r}, username={self.username!r})"
+
+    async def refresh_tag_cache(self):
+        """Refresh the internal tag cache.
+
+        .. versionadded:: 0.2
+        .. seealso:: :attr:`.tag_cache`
+        """
+        r = await self.request("GET", routes["tag_list"])
+        json = await r.json()
+        for item in json:
+            assert item["data"]["id"], "ID missing from tag list"
+            tag_id = item["data"]["id"]
+            new_tag = Tag(self, data=item)
+            if tag_id in self.tag_cache:
+                old_tag = self.tag_cache[tag_id]
+                old_tag.transfer(new_tag)
+            else:
+                self.tag_cache[new_tag.id] = new_tag
+
+    async def get_tag(self, id: str) -> Tag:
+        """Get a tag using it's ID.
+
+        .. versionadded:: 0.2
+
+        .. note::
+            In order to find a tag by the tag's name, it is recommended to call :meth:`.refresh_tag_cache` and then
+            iterate over :attr:`.tag_cache`.
+
+        :param id: The tag's UUID.
+        :type id: str
+        :return: A :class:`.Tag` object.
+        :rtype: Tag
+        """
+        if id in self.tag_cache:
+            return self.tag_cache[id]
+        else:
+            await self.refresh_tag_cache()
+            if id in self.tag_cache:
+                return self.tag_cache[id]
+            else:
+                raise InvalidID(id, Tag)
+
+    def get_manga(self, id: str) -> Manga:
+        """Get a manga using it's ID.
+
+        .. versionadded:: 0.2
+
+        .. seealso:: :meth:`.search`.
+
+        .. warning::
+            This method returns a **lazy** Manga instance. Call :meth:`.Manga.fetch` on the returned object to see
+            any values.
+
+        :param id: The manga's UUID.
+        :type id: str
+        :return: A :class:`.Manga` object.
+        :rtype: Manga
+        """
+        return Manga(self, id=id)
+
+    async def random_manga(self) -> Manga:
+        """Get a random manga.
+
+        .. versionadded:: 0.2
+
+        :return: A random manga.
+        :rtype: Manga
+        """
+        r = await self.request("GET", routes["random_manga"])
+        return Manga(self, data=await r.json())
+
+    async def _do_batch(self, items: Tuple[Model, ...], route_name: str):
+        uuid_map: Dict[str, List[Model]] = {}
+        for item in items:
+            uuid_map.setdefault(item.id, []).append(item)
+        while uuid_map:
+            uuids_for_this_batch = list(uuid_map.keys())[:100]
+            r = await self.request("GET", routes[route_name], params=dict(ids=uuids_for_this_batch))
+            for item in (await r.json())["results"]:
+                item_id = item["data"]["id"]
+                assert item_id, "Missing ID"
+                for obj in uuid_map[item_id]:
+                    obj.parse(item)
+                uuid_map.pop(item_id)
+
+    async def batch_authors(self, *authors: Author):
+        """Updates a lot of authors at once, reducing the time needed to update tens or hundreds of authors.
+        
+        .. versionadded:: 0.2
+
+        :param authors: A tuple of all the authors (and artists) to update.
+        :type authors: Tuple[Author, ...]
+        """
+        await self._do_batch(authors, "author_list")
+
+    def get_author(self, id: str) -> Author:
+        """Get an author using it's ID.
+
+        .. versionadded:: 0.2
+
+        .. note::
+            This method can also be used to get artists, since they are the same class.
+
+        .. warning::
+            This method returns a **lazy** Author instance. Call :meth:`.Author.fetch` on the returned object to see
+            any values.
+
+        :param id: The author's UUID.
+        :type id: str
+        :return: A :class:`.Author` object.
+        :rtype: Author
+        """
+        return Author(self, id=id)
+
+    async def batch_mangas(self, *mangas: Manga):
+        """Updates a lot of mangas at once, reducing the time needed to update tens or hundreds of mangas.
+
+        .. versionadded:: 0.2
+
+        .. warning::
+            If duplicate mangas are specified, only one manga instance will be updated.
+
+        :param mangas: A tuple of all the mangas to update.
+        :type mangas: Tuple[Manga, ...]
+        """
+        await self._do_batch(mangas, "search")

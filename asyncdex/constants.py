@@ -1,7 +1,7 @@
 from re import compile
 from typing import Dict, List
 
-from .ratelimit import PathRatelimit, Path
+from .ratelimit import Path, PathRatelimit
 
 ratelimit_data: List[PathRatelimit] = [
     PathRatelimit(Path("/account/create", compile(r"/account/create")), 1, 60 * 60),
@@ -39,9 +39,15 @@ ratelimit_data: List[PathRatelimit] = [
 """
 
 routes: Dict[str, str] = {
+    "author": "/author/{id}",
+    "author_list": "/author",
     "login": "/auth/login",
     "logout": "/auth/logout",
-    "session_token": "/auth/refresh"
+    "manga": "/manga/{id}",
+    "random_manga": "/manga/random",
+    "search": "/manga",
+    "session_token": "/auth/refresh",
+    "tag_list": "/manga/tag",
 }
 """The various predefined routes for the client. If the API changes for a given destination, the route can easily
 be modified without copy-pasting the route to the functions using it."""
