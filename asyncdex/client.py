@@ -40,6 +40,9 @@ class MangadexClient:
     :param session: The session object for the client to use. If one is not provided, the client will create a new
         session instead. This is useful for providing a custom session.
     :type session: aiohttp.ClientSession
+    :param api_url: The base URL for the MangaDex API. Useful for private instances or a testing environment. Should
+        not include a trailing slash.
+    :type api_url: str
     :param anonymous: Whether or not to force anonymous mode. This will clear the username and/or password.
     :type anonymous: bool
     :param session_kwargs: Optional keyword arguments to pass on to the :class:`aiohttp.ClientSession`.
