@@ -12,6 +12,18 @@ Client
 Models
 ++++++
 
+.. autoclass:: asyncdex.models.abc.Model
+    :members:
+
+.. autoclass:: asyncdex.models.Manga
+    :members:
+
+.. autoclass:: asyncdex.models.Tag
+    :members:
+
+.. autoclass:: asyncdex.models.Author
+    :members:
+
 Exceptions
 ++++++++++
 
@@ -25,6 +37,12 @@ Exceptions
     :members:
 
 .. autoexception:: asyncdex.exceptions.Unauthorized
+    :members:
+
+.. autoexception:: asyncdex.exceptions.Missing
+    :members:
+
+.. autoexception:: asyncdex.exceptions.InvalidID
     :members:
 
 Enums
@@ -73,3 +91,19 @@ Misc
 ++++
 
 .. autofunction:: asyncdex.utils.remove_prefix
+
+.. autoclass:: asyncdex.utils.AttrDict
+    :members:
+
+.. autoclass:: asyncdex.utils.DefaultAttrDict
+    :members:
+
+.. autofunction:: asyncdex.utils.copy_key_to_attribute
+
+.. autofunction:: asyncdex.utils.parse_relationships
+
+.. autoclass:: asyncdex.models.mixins.DatetimeMixin
+    :members:
+
+.. autoclass:: asyncdex.models.title.TitleList
+    :members:

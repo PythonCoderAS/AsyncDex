@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from re import Pattern
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 
 import aiohttp
 
@@ -11,7 +11,7 @@ import aiohttp
 class Path:
     """A Path object representing a various path."""
     name: str
-    """The name of the path. This will be the value provided by :attr:`Ratelimit.path`."""
+    """The name of the path. This will be the value provided by :attr:`.Ratelimit.path`."""
     path_regex: Pattern
     """A compiled regex pattern matching the path, used when the path has a variable, such as ``/action/{id}``."""
     method: Optional[str] = None
@@ -24,11 +24,11 @@ class PathRatelimit:
     path: Path
     """A :class:`~.Path` object."""
     ratelimit_amount: int
-    """Analogous to :attr:`Ratelimit.ratelimit_amount`"""
+    """Analogous to :attr:`.Ratelimit.ratelimit_amount`"""
     ratelimit_time: int
     """The amount of time needed for the ratelimit to expire after the first use."""
     ratelimit_expires: datetime = field(default=datetime.min, init=False)
-    """Analogous to :attr:`Ratelimit.ratelimit_expires`"""
+    """Analogous to :attr:`.Ratelimit.ratelimit_expires`"""
     ratelimit_used: int = field(default=0, init=False)
     """How many times the path has been called since the last ratelimit expire."""
 
@@ -113,11 +113,12 @@ class Ratelimits:
         :type url: str
         :param method: The HTTP method being used.
         :type method: str
-        :return: A number representing the amount of seconds before ratelimit expire or -1 if there is no need to ratelimit
-            as well as the :class:`~.PathRatelimit` object if found.
+        :return: A number representing the amount of seconds before ratelimit expire or -1 if there is no need to
+            ratelimit as well as the :class:`~.PathRatelimit` object if found.
         :rtype: float
         """
-        # We want to check with priority. For example, ``/url/x/something`` matches both ``/url/{id}`` and ``/url/{id}/something``.
+        # We want to check with priority.
+        # For example, ``/url/x/something`` matches both ``/url/{id}`` and ``/url/{id}/something``.
         # We want to match the second one because that is how API ratelimits work.
         ratelimit_obj = None
         obj_priority = 0  # Actually just the number of slashes in the regex
@@ -142,7 +143,7 @@ class Ratelimits:
         :param method: The HTTP method being used.
         :type method: str
         :return: The :class:`~.PathRatelimit` object if found
-        :rtype: Optional[:class:`~.PathRatelimit`]
+        :rtype: :class:`~.PathRatelimit`
         """
         time_to_sleep, retval = await self.check(url, method)
         if time_to_sleep > 0:

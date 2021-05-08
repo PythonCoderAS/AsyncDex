@@ -7,8 +7,14 @@ class Demographic(Enum):
 
     .. versionadded:: 0.2
     """
-    SHONEN = "shonen"
-    """A Shonen Manga."""
+    SHOUNEN = SHONEN = "shounen"  # Documentation bug on the API's end.
+    """A Shounen Manga.
+    
+    .. note::
+        In the developer documentation as of May 7, 2021, there is a typo in the word ``Shounen``, where it is 
+        spelled without the ``u``. However, the actual API will only recognize the variant including a ``u``. 
+        For the library, both variations can be used for the enum.
+    """
     SHOUJO = "shoujo"
     """A Shoujo Manga."""
     JOSEI = "josel"
@@ -126,7 +132,7 @@ class Relationship(Enum):
     AUTHOR = 'author'
     """A :class:`.Author` resource."""
     ARTIST = 'artist'
-    """A :class:`.Artist` resource."""
+    """A :class:`.Author` resource."""
     SCANLATION_GROUP = 'scanlation_group'
     """A :class:`.Group` resource."""
     TAG = 'tag'
