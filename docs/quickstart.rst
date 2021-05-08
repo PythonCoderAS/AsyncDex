@@ -13,13 +13,15 @@ Create an instance of MangadexClient:
     async def main():
         client = MangadexClient()
 
-Make a request for a random manga:
+Make a request for a random manga and print the authors of the manga:
 
 .. code-block:: python
 
-    response = await client.request("GET", "/manga/random")
-    json = await response.json()
-    print(json["data"]["id"])
+    manga = await client.random_manga()
+    print(f"{manga.id}: {manga.titles.en.primary}")
+    await manga.load_authors()
+    print(f"Author of {manga.titles.en.primary}: {manga.authors[0].name}")
+
 
 Log in to your MangaDex account:
 
