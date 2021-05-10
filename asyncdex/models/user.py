@@ -28,7 +28,7 @@ class User(Model):
         self._parse_relationships(data)
         if not hasattr(self, "chapters"):
             self.chapters = []
-            
+
     async def load_chapters(self):
         """Shortcut method that calls :meth:`.Client.batch_chapters` with the chapters that belong to the user.
 

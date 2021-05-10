@@ -22,8 +22,14 @@ class Tag(Model):
 
     """The version of the tag. Can be used to cache tag objects."""
 
-    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        client: "MangadexClient",
+        *,
+        id: Optional[str] = None,
+        version: int = 0,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.names = DefaultAttrDict(default=lambda: None)
         super().__init__(client, id=id, version=version, data=data)
 

@@ -32,8 +32,15 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
     params: MutableMapping[str, Any]
     """Additional params to include in every request."""
 
-    def __init__(self, url: str, model: Type[_ModelT], client: "MangadexClient", *, params: Optional[MutableMapping[
-        str, Any]] = None, limit_size: int = 100):
+    def __init__(
+        self,
+        url: str,
+        model: Type[_ModelT],
+        client: "MangadexClient",
+        *,
+        params: Optional[MutableMapping[str, Any]] = None,
+        limit_size: int = 100,
+    ):
         self.url = url
         self.model = model
         self.client = client

@@ -8,23 +8,18 @@ with open(abspath(join(__file__, "..", "README.rst"))) as file:
     long_desc = file.read()
 
 setup(
-    name='AsyncDex',
+    name="AsyncDex",
     version=version,
-    packages=['asyncdex'],
-    url='https://github.com/PythonCoderAS/AsyncDex',
-    license='MIT',
-    author='PythonCoderAS',
-    author_email='pokestarfan@yahoo.com',
-    description='Async MangaDex library',
+    packages=["asyncdex"],
+    url="https://github.com/PythonCoderAS/AsyncDex",
+    license="MIT",
+    author="PythonCoderAS",
+    author_email="pokestarfan@yahoo.com",
+    description="Async MangaDex library",
     long_description=long_desc,
     install_requires=["aiohttp", "natsort"],
-    extras_require={
-        "dev": [
-            "sphinx",
-            "sphinx-book-theme"
-        ]
-    },
-    python_requires='>=3.7',
+    extras_require={"dev": ["sphinx", "sphinx-book-theme"]},
+    python_requires=">=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
@@ -35,5 +30,5 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Software Development :: Libraries :: Python Modules",
-    ]
+    ],
 )

@@ -32,8 +32,14 @@ class Model(ABC):
     client: "MangadexClient"
     """The client that created this model."""
 
-    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        client: "MangadexClient",
+        *,
+        id: Optional[str] = None,
+        version: int = 0,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.client = client
         self.id = id
         self.version = version
@@ -54,8 +60,9 @@ class Model(ABC):
         if "data" in data:
             copy_key_to_attribute(data["data"], "id", self)
             if "attributes" in data["data"]:
-                copy_key_to_attribute(data["data"]["attributes"], "version", self,
-                                      transformation=lambda num: int(num) if num else num)
+                copy_key_to_attribute(
+                    data["data"]["attributes"], "version", self, transformation=lambda num: int(num) if num else num
+                )
 
     @abstractmethod
     async def fetch(self):

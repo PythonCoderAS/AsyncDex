@@ -226,8 +226,14 @@ class Manga(Model, DatetimeMixin):
         """
         return self.myanimelist_id and f"https://myanimelist.net/manga/{self.myanimelist_id}"
 
-    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        client: "MangadexClient",
+        *,
+        id: Optional[str] = None,
+        version: int = 0,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.tags = []
         self.titles = DefaultAttrDict(default=lambda: TitleList())
         self.descriptions = DefaultAttrDict(default=lambda: None)
@@ -254,16 +260,26 @@ class Manga(Model, DatetimeMixin):
             copy_key_to_attribute(attributes, "originalLanguage", self, "original_language")
             copy_key_to_attribute(attributes, "lastVolume", self, "last_volume")
             copy_key_to_attribute(attributes, "lastChapter", self, "last_chapter")
-            copy_key_to_attribute(attributes, "publicationDemographic", self, "demographic",
-                                  transformation=lambda attrib: Demographic(attrib) if attrib else attrib)
+            copy_key_to_attribute(
+                attributes,
+                "publicationDemographic",
+                self,
+                "demographic",
+                transformation=lambda attrib: Demographic(attrib) if attrib else attrib,
+            )
             if "status" in attributes and attributes["status"] == "hitaus":
                 attributes["status"] = "hiatus"
-            copy_key_to_attribute(attributes, "status", self,
-                                  transformation=lambda attrib: MangaStatus(attrib) if attrib else attrib)
-            copy_key_to_attribute(attributes, "year", self,
-                                  transformation=lambda num: int(num) if num else num)
-            copy_key_to_attribute(attributes, "contentRating", self, "rating",
-                                  transformation=lambda attrib: ContentRating(attrib) if attrib else attrib)
+            copy_key_to_attribute(
+                attributes, "status", self, transformation=lambda attrib: MangaStatus(attrib) if attrib else attrib
+            )
+            copy_key_to_attribute(attributes, "year", self, transformation=lambda num: int(num) if num else num)
+            copy_key_to_attribute(
+                attributes,
+                "contentRating",
+                self,
+                "rating",
+                transformation=lambda attrib: ContentRating(attrib) if attrib else attrib,
+            )
             self._process_times(attributes)
             if "tags" in attributes:
                 for tag in attributes["tags"]:
@@ -288,7 +304,6 @@ class Manga(Model, DatetimeMixin):
                 copy_key_to_attribute(links, "engtl", self, "english_translation_url")
             self._parse_relationships(data)
             self.chapters = ChapterList(self)
-
 
     async def fetch(self):
         await self._fetch("manga")

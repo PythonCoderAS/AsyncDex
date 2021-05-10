@@ -4,10 +4,13 @@ from typing import Dict, List
 
 from .ratelimit import Path, PathRatelimit
 
-invalid_folder_name_regex = re.compile(r"""([<>:"/\\|?*\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009
+invalid_folder_name_regex = re.compile(
+    r"""([<>:"/\\|?*\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009
 \u000a\u000b\u000c\u000d\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c
 \u001d\u001e\u001f]|CON|PRN|AUX|NUL|COM1|COM2|COM3|COM4|COM5|COM6|COM7|COM8|COM9|LPT1|LPT2|LPT3|LPT4|LPT5|LPT6|LPT7
-|LPT8|LPT9)""", re.VERBOSE)
+|LPT8|LPT9)""",
+    re.VERBOSE,
+)
 r"""The regex for invalid folder names.
 
 Contains:
@@ -77,7 +80,7 @@ ratelimit_data: List[PathRatelimit] = [
     PathRatelimit(Path("/author/{id}", compile(r"/author/\S+"), "PUT"), 10, 1 * 60),
     PathRatelimit(Path("/author/{id}", compile(r"/author/\S+"), "DELETE"), 10, 10 * 60),
     PathRatelimit(Path("/captcha/solve", compile(r"/captcha/solve"), "POST"), 10, 10 * 60),
-    PathRatelimit(Path("/at-home/server/{id}", compile(r"/at-home/server/\S+"), "GET"), 60, 1 * 60)
+    PathRatelimit(Path("/at-home/server/{id}", compile(r"/at-home/server/\S+"), "GET"), 60, 1 * 60),
 ]
 """These are the ratelimit rules taken from the API Docs. 
 

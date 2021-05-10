@@ -32,8 +32,9 @@ class Group(Model, DatetimeMixin):
         if "data" in data and "attributes" in data["data"]:
             attributes = data["data"]["attributes"]
             copy_key_to_attribute(attributes, "name", self)
-            copy_key_to_attribute(attributes, "leader", self,
-                                  transformation=lambda attrib: User(self.client, data=attrib))
+            copy_key_to_attribute(
+                attributes, "leader", self, transformation=lambda attrib: User(self.client, data=attrib)
+            )
             if "members" in attributes:
                 self.members = [User(self.client, data=member) for member in attributes["members"]]
             self._process_times(attributes)

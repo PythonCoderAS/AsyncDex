@@ -8,7 +8,7 @@ _T = TypeVar("_T", bound="DatetimeMixin")
 
 class DatetimeMixin:
     """A mixin for models with ``created_at`` and ``updated_at`` attributes.
-    
+
     .. versionadded:: 0.2
     """
 
@@ -48,13 +48,23 @@ class DatetimeMixin:
         return self.updated_at or self.created_at
 
     def _process_times(self, attributes: Dict[str, str]):
-        copy_key_to_attribute(attributes, "createdAt", self, "created_at",
-                              transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib)
-        copy_key_to_attribute(attributes, "updatedAt", self, "updated_at",
-                              transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib)
+        copy_key_to_attribute(
+            attributes,
+            "createdAt",
+            self,
+            "created_at",
+            transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib,
+        )
+        copy_key_to_attribute(
+            attributes,
+            "updatedAt",
+            self,
+            "updated_at",
+            transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib,
+        )
 
     def __lt__(self: _T, other: _T) -> bool:
-        """Compares the two object's creation times to find if the current model's creation time is less than the 
+        """Compares the two object's creation times to find if the current model's creation time is less than the
         other model's creation time.
 
         .. versionadded:: 0.3
@@ -85,7 +95,7 @@ class DatetimeMixin:
         return NotImplemented
 
     def __gt__(self: _T, other: _T) -> bool:
-        """Compares the two object's creation times to find if the current model's creation time is greater than the 
+        """Compares the two object's creation times to find if the current model's creation time is greater than the
         other model's creation time.
 
         .. versionadded:: 0.3

@@ -10,6 +10,7 @@ import aiohttp
 @dataclass(frozen=True)
 class Path:
     """A Path object representing a various path."""
+
     name: str
     """The name of the path. This will be the value provided by :attr:`.Ratelimit.path`."""
     path_regex: Pattern
@@ -21,6 +22,7 @@ class Path:
 @dataclass()
 class PathRatelimit:
     """An object that allows the request method to check the ratelimit before making a response."""
+
     path: Path
     """A :class:`~.Path` object."""
     ratelimit_amount: int

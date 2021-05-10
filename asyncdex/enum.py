@@ -7,6 +7,7 @@ class Demographic(Enum):
 
     .. versionadded:: 0.2
     """
+
     SHOUNEN = SHONEN = "shounen"  # Documentation bug on the API's end.
     """A Shounen Manga.
     
@@ -42,6 +43,7 @@ class MangaStatus(Enum):
         not dictate the policy for update checking, as they are only meant to be an aid for end users and not actually
         representative of the immutability of the manga's chapter list.
     """
+
     ONGOING = "ongoing"
     """A manga that is actively being published, in volume format, in a magazine like Weekly Shonen, or online."""
     COMPLETED = "completed"
@@ -63,17 +65,18 @@ class FollowStatus(Enum):
 
     .. versionadded:: 0.2
     """
-    READING = 'reading'
+
+    READING = "reading"
     """A manga that the user has marked as reading."""
-    ON_HOLD = 'on_hold'
+    ON_HOLD = "on_hold"
     """A manga that the user has marked as on_hold."""
-    PLAN_TO_READ = 'plan_to_read'
+    PLAN_TO_READ = "plan_to_read"
     """A manga that the user has marked as plan_to_read."""
-    DROPPED = 'dropped'
+    DROPPED = "dropped"
     """A manga that the user has marked as dropped."""
-    RE_READING = 're_reading'
+    RE_READING = "re_reading"
     """A manga that the user has marked as re_reading."""
-    COMPLETED = 'completed'
+    COMPLETED = "completed"
     """A manga that the user has marked as completed.
     
     .. warning::
@@ -88,26 +91,27 @@ class ContentRating(Enum):
 
     .. versionadded:: 0.2
     """
-    SAFE = 'safe'
+
+    SAFE = "safe"
     """A manga that is safe.
     
     .. note::
         This is the only content rating that means a manga is safe for work. All other values are not safe for work
         (NSFW).
     """
-    SUGGESTIVE = 'suggestive'
+    SUGGESTIVE = "suggestive"
     """A manga that is suggestive.
     
     .. note::
         This type of content represents content tagged with the ``Ecchi`` tag.
     """
-    EROTICA = 'erotica'
+    EROTICA = "erotica"
     """A manga that is erotica.
     
     .. note::
         This type of content represents content tagged with the ``Smut`` tag.
     """
-    PORNOGRAPHIC = 'pornographic'
+    PORNOGRAPHIC = "pornographic"
     """A manga that is pornographic.
     
     .. note::
@@ -122,9 +126,10 @@ class Visibility(Enum):
 
     .. versionadded:: 0.2
     """
-    PUBLIC = 'public'
+
+    PUBLIC = "public"
     """A public :class:`.CustomList`."""
-    PRIVATE = 'private'
+    PRIVATE = "private"
     """A private :class:`.CustomList`."""
 
 
@@ -134,21 +139,22 @@ class Relationship(Enum):
 
     .. versionadded:: 0.2
     """
-    MANGA = 'manga'
+
+    MANGA = "manga"
     """A :class:`.Manga` resource."""
-    CHAPTER = 'chapter'
+    CHAPTER = "chapter"
     """A :class:`.Chapter` resource."""
-    AUTHOR = 'author'
+    AUTHOR = "author"
     """A :class:`.Author` resource."""
-    ARTIST = 'artist'
+    ARTIST = "artist"
     """A :class:`.Author` resource."""
-    SCANLATION_GROUP = 'scanlation_group'
+    SCANLATION_GROUP = "scanlation_group"
     """A :class:`.Group` resource."""
-    TAG = 'tag'
+    TAG = "tag"
     """A :class:`.Tag` resource."""
-    USER = 'user'
+    USER = "user"
     """A :class:`.User` resource."""
-    CUSTOM_LIST = 'custom_list'
+    CUSTOM_LIST = "custom_list"
     """A :class:`.CustomList` resource."""
 
 
@@ -172,6 +178,7 @@ class DuplicateResolutionAlgorithm(Enum):
         It is an error to specify more than one of the lowest-priority operations, since they all return only one
         value. Doing so will raise an error.
     """
+
     PREVIOUS_GROUP = auto()
     """A resolution strategy that attempts to use the same group for the chapter as the previous chapter. This needs 
     an accompanying strategy to determine the initial group.

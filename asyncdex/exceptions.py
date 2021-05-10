@@ -24,8 +24,9 @@ class Ratelimit(AsyncDexException):
     """A :class:`datetime.datetime` object in UTC time representing when the ratelimit will expire."""
 
     def __init__(self, path: str, ratelimit_amount: int, ratelimit_expires: datetime):
-        super().__init__(f"Ratelimited for {(ratelimit_expires - datetime.utcnow()).total_seconds():.3d} seconds on "
-                         f"{path}.")
+        super().__init__(
+            f"Ratelimited for {(ratelimit_expires - datetime.utcnow()).total_seconds():.3d} seconds on " f"{path}."
+        )
         self.path = path
         self.ratelimit_amount = ratelimit_amount
         self.ratelimit_expires = ratelimit_expires
@@ -68,6 +69,7 @@ class Missing(AsyncDexException):
     :param model: The name of the model that requires the attribute. Can be empty.
     :type model: str
     """
+
     attribute: str
     """The name of the attribute that is missing."""
 

@@ -110,7 +110,7 @@ class Chapter(Model, DatetimeMixin):
     @property
     def sorting_number(self) -> float:
         """Returns ``0`` if the chapter does not have a number, otherwise returns the chapter's number.
-        
+
         :return: A number usable for sorting.
         :rtype: float
         """
@@ -139,8 +139,10 @@ class Chapter(Model, DatetimeMixin):
         r = await self.client.request("GET", routes["mdah"].format(chapterId=self.id), params={"ssl": ssl_only})
         base_url = (await r.json())["baseUrl"]
         r.close()
-        return [f"{base_url}/{'data-saver' if data_saver else 'data'}/{self.hash}/{filename}"
-                for filename in (self.data_saver_page_names if data_saver else self.page_names)]
+        return [
+            f"{base_url}/{'data-saver' if data_saver else 'data'}/{self.hash}/{filename}"
+            for filename in (self.data_saver_page_names if data_saver else self.page_names)
+        ]
 
     async def get_page(self, url: str) -> aiohttp.ClientResponse:
         """A method to download one page of a chapter, using the URLs from :meth:`.pages`. This method is more
@@ -157,20 +159,33 @@ class Chapter(Model, DatetimeMixin):
         r = await self.client.request("GET", url)
         content_length = len(await r.read())
         finish = datetime.utcnow()
-        asyncio.create_task(self.client._one_off("POST", routes["report_page"], json={
-            "url": url,
-            "success": r.ok,
-            "bytes": content_length,
-            "duration": ((finish - start).total_seconds() * 1000),
-            "cached": r.headers.get("X-Cache", "").lower().startswith("hit")
-        }))
+        asyncio.create_task(
+            self.client._one_off(
+                "POST",
+                routes["report_page"],
+                json={
+                    "url": url,
+                    "success": r.ok,
+                    "bytes": content_length,
+                    "duration": ((finish - start).total_seconds() * 1000),
+                    "cached": r.headers.get("X-Cache", "").lower().startswith("hit"),
+                },
+            )
+        )
         r.raise_for_status()
         return r
 
-    async def download_chapter(self, *, folder_format: str = "{manga}/{chapter_num}{separator}{title}",
-                               file_format: str = "{num}", as_bytes_list: bool = False, overwrite: bool = True,
-                               retries: int = 3, use_data_saver: bool = False,
-                               ssl_only: bool = False) -> Optional[List[bytes]]:
+    async def download_chapter(
+        self,
+        *,
+        folder_format: str = "{manga}/{chapter_num}{separator}{title}",
+        file_format: str = "{num}",
+        as_bytes_list: bool = False,
+        overwrite: bool = True,
+        retries: int = 3,
+        use_data_saver: bool = False,
+        ssl_only: bool = False,
+    ) -> Optional[List[bytes]]:
         """Download all of the pages of the chapter and either save them locally to the filesystem or return the raw
         bytes.
 
@@ -235,8 +250,9 @@ class Chapter(Model, DatetimeMixin):
             # means that a name of ``ex___ample`` becomes ``ex_ample``.
             if not self.manga.titles:
                 await self.manga.fetch()
-            manga_title = self.manga.titles[self.language].primary or (self.manga.titles.first().primary if
-                                                                       self.manga.titles else self.manga.id)
+            manga_title = self.manga.titles[self.language].primary or (
+                self.manga.titles.first().primary if self.manga.titles else self.manga.id
+            )
             manga_title = re.sub("_{2,}", "_", invalid_folder_name_regex.sub("_", manga_title.strip()))
             base = folder_format.format(manga=manga_title, chapter_num=chapter_num, separator=separator, title=title)
             makedirs(base, exist_ok=True)
@@ -245,9 +261,14 @@ class Chapter(Model, DatetimeMixin):
             items = await asyncio.gather(*[self.get_page(url) for url in pages])
         except ClientResponseError:
             if retries > 0:
-                return await self.download_chapter(folder_format=folder_format, as_bytes_list=as_bytes_list,
-                                                   overwrite=overwrite, retries=retries - 1,
-                                                   use_data_saver=use_data_saver, ssl_only=ssl_only)
+                return await self.download_chapter(
+                    folder_format=folder_format,
+                    as_bytes_list=as_bytes_list,
+                    overwrite=overwrite,
+                    retries=retries - 1,
+                    use_data_saver=use_data_saver,
+                    ssl_only=ssl_only,
+                )
             else:
                 raise
         else:
@@ -256,10 +277,14 @@ class Chapter(Model, DatetimeMixin):
                 return byte_list  # NOQA: ignore; This is needed because for whatever reason PyCharm cannot guess the
                 # output of asyncio.gather()
             else:
-                for original_file_name, (num, item) in zip(self.data_saver_page_names if use_data_saver else
-                                                           self.page_names, enumerate(byte_list, start=1)):
-                    filename = (file_format.format(num=num, num0=num - 1, name=original_file_name) + "." +
-                                original_file_name.rpartition(".")[-1])
+                for original_file_name, (num, item) in zip(
+                    self.data_saver_page_names if use_data_saver else self.page_names, enumerate(byte_list, start=1)
+                ):
+                    filename = (
+                        file_format.format(num=num, num0=num - 1, name=original_file_name)
+                        + "."
+                        + original_file_name.rpartition(".")[-1]
+                    )
                     full_path = join(base, filename)
                     if not (exists(full_path) and overwrite):
                         with open(full_path, "wb") as fp:
@@ -304,8 +329,13 @@ class Chapter(Model, DatetimeMixin):
 
     def _process_times(self, attributes: Dict[str, str]):
         super()._process_times(attributes)
-        copy_key_to_attribute(attributes, "publishAt", self, "publish_time",
-                              transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib)
+        copy_key_to_attribute(
+            attributes,
+            "publishAt",
+            self,
+            "publish_time",
+            transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib,
+        )
 
     async def fetch(self):
         await self._fetch("chapter")
@@ -341,8 +371,12 @@ def _check_values(set1: set, set2: set) -> int:
     return match
 
 
-def _resolve_duplicates(chapter_list: List[Chapter], algo: List[DuplicateResolutionAlgorithm],
-                        specific_groups: Optional[Iterable[Group]], specific_users: Optional[Iterable[User]]):
+def _resolve_duplicates(
+    chapter_list: List[Chapter],
+    algo: List[DuplicateResolutionAlgorithm],
+    specific_groups: Optional[Iterable[Group]],
+    specific_users: Optional[Iterable[User]],
+):
     """Actually does the duplicate resolving."""
     last_chapter: Optional[set] = None
     specific_groups = specific_groups or []
@@ -356,9 +390,14 @@ def _resolve_duplicates(chapter_list: List[Chapter], algo: List[DuplicateResolut
     if DuplicateResolutionAlgorithm.VIEWS_ASC in algo or DuplicateResolutionAlgorithm.VIEWS_DESC in algo:
         raise NotImplementedError("MangaDex API does not return views yet, sorry!")
     duplicate_last_prios = _check_values(
-        {DuplicateResolutionAlgorithm.VIEWS_ASC, DuplicateResolutionAlgorithm.VIEWS_DESC,
-         DuplicateResolutionAlgorithm.CREATION_DATE_ASC,
-         DuplicateResolutionAlgorithm.CREATION_DATE_DESC}, set(algo))
+        {
+            DuplicateResolutionAlgorithm.VIEWS_ASC,
+            DuplicateResolutionAlgorithm.VIEWS_DESC,
+            DuplicateResolutionAlgorithm.CREATION_DATE_ASC,
+            DuplicateResolutionAlgorithm.CREATION_DATE_DESC,
+        },
+        set(algo),
+    )
     if duplicate_last_prios > 1:
         raise ValueError("The lowest-priority operations cannot be combined.")
     elif not duplicate_last_prios:
@@ -429,9 +468,14 @@ class ChapterList(List[Chapter]):
     def _return_date_string(datetime_obj: datetime):
         return datetime_obj.strftime("%Y-%m-%dT%H:%M:%S")
 
-    async def get(self, *, locales: Optional[List[str]] = None, created_after: Optional[datetime] = None,
-                  updated_after: Optional[datetime] = None,
-                  published_after: Optional[datetime] = None):
+    async def get(
+        self,
+        *,
+        locales: Optional[List[str]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+    ):
         """Gets the list of chapters.
 
         :param locales: The locales to filter by.
@@ -467,8 +511,9 @@ class ChapterList(List[Chapter]):
             params["updated_after"] = self._return_date_string(updated_after)
         if published_after:
             params["published_after"] = self._return_date_string(published_after)
-        async for item in Pager(routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client,
-                                params=params, limit_size=500):
+        async for item in Pager(
+            routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client, params=params, limit_size=500
+        ):
             item: Chapter
             item.manga = self.manga
             if item in self:
@@ -476,26 +521,29 @@ class ChapterList(List[Chapter]):
             else:
                 self.append(item)
 
-    def filter(self, *,
-               locales: Optional[List[str]] = None,
-               creation_time: Optional[Interval[datetime]] = None,
-               update_time: Optional[Interval[datetime]] = None,
-               publish_time: Optional[Interval[datetime]] = None,
-               views: Optional[Interval[int]] = None,
-               has_number: Optional[bool] = None,
-               chapter_number_range: Optional[Interval[float]] = None,
-               chapter_numbers: Optional[InclusionExclusionPair[Optional[float]]] = None,
-               remove_duplicates: bool = False,
-               duplicate_strategy: Optional[List[DuplicateResolutionAlgorithm]] = None,
-               duplicate_strategy_groups: Optional[List[Group]] = None,
-               duplicate_strategy_users: Optional[List[User]] = None,
-               groups: Optional[InclusionExclusionPair[Group]] = None,
-               users: Optional[InclusionExclusionPair[User]] = None) -> "ChapterList":
+    def filter(
+        self,
+        *,
+        locales: Optional[List[str]] = None,
+        creation_time: Optional[Interval[datetime]] = None,
+        update_time: Optional[Interval[datetime]] = None,
+        publish_time: Optional[Interval[datetime]] = None,
+        views: Optional[Interval[int]] = None,
+        has_number: Optional[bool] = None,
+        chapter_number_range: Optional[Interval[float]] = None,
+        chapter_numbers: Optional[InclusionExclusionPair[Optional[float]]] = None,
+        remove_duplicates: bool = False,
+        duplicate_strategy: Optional[List[DuplicateResolutionAlgorithm]] = None,
+        duplicate_strategy_groups: Optional[List[Group]] = None,
+        duplicate_strategy_users: Optional[List[User]] = None,
+        groups: Optional[InclusionExclusionPair[Group]] = None,
+        users: Optional[InclusionExclusionPair[User]] = None,
+    ) -> "ChapterList":
         """Filter the chapter list and return a new :class:`.ChapterList`. Calling this method without specifying any
         additional filtering mechanisms will return a shallow copy of the list.
-        
+
         The order of the filter will be as follows:
-        
+
         #. Filter the datetimes first
         #. Filter by the intervals
         #. Filter by the inclusion and exclusion pairs
@@ -575,9 +623,9 @@ class ChapterList(List[Chapter]):
 
         :type publish_time: Interval[datetime]
         :param views: An :class:`.Interval` of the views that a manga can have.
-        
+
             .. warning::
-                The mangadex API does not return views yet, so specifying something for this parameter will result in 
+                The mangadex API does not return views yet, so specifying something for this parameter will result in
                 :class:`.NotImplementedError` being raised.
 
             Example intervals:
@@ -665,13 +713,27 @@ class ChapterList(List[Chapter]):
         :rtype: ChapterList
         """
         base: Iterable[Chapter] = self
-        options = (locales, creation_time, update_time, publish_time, views, has_number, chapter_number_range,
-                   chapter_numbers, duplicate_strategy, duplicate_strategy_groups, duplicate_strategy_users, groups,
-                   users)
+        options = (
+            locales,
+            creation_time,
+            update_time,
+            publish_time,
+            views,
+            has_number,
+            chapter_number_range,
+            chapter_numbers,
+            duplicate_strategy,
+            duplicate_strategy_groups,
+            duplicate_strategy_users,
+            groups,
+            users,
+        )
         if options.count(None) == len(options) and not remove_duplicates:
             return ChapterList(self.manga, entries=self.copy())
-        duplicate_strategy = duplicate_strategy or [DuplicateResolutionAlgorithm.PREVIOUS_GROUP,
-                                                    DuplicateResolutionAlgorithm.CREATION_DATE_ASC]
+        duplicate_strategy = duplicate_strategy or [
+            DuplicateResolutionAlgorithm.PREVIOUS_GROUP,
+            DuplicateResolutionAlgorithm.CREATION_DATE_ASC,
+        ]
         if locales:
             base = filter(lambda chapter: chapter.language in locales, base)
         if has_number:
@@ -690,8 +752,11 @@ class ChapterList(List[Chapter]):
         if chapter_numbers:
             base = filter(lambda chapter: chapter_numbers.matches_include_exclude_pair(chapter.number), base)
         if groups:
-            base = filter(lambda chapter: _check_values(set(chapter.groups), set(groups.include)) and not _check_values(
-                set(chapter.groups), set(groups.exclude)), base)
+            base = filter(
+                lambda chapter: _check_values(set(chapter.groups), set(groups.include))
+                and not _check_values(set(chapter.groups), set(groups.exclude)),
+                base,
+            )
         if users:
             base = filter(lambda chapter: users.matches_include_exclude_pair(chapter.user), base)
         final = list(base)

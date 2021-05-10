@@ -21,8 +21,8 @@ def remove_prefix(prefix: str, string: str) -> str:
     :return: The string without the prefix
     :rtype: str
     """
-    if string[:len(prefix)] == prefix:
-        return string[len(prefix):]
+    if string[: len(prefix)] == prefix:
+        return string[len(prefix) :]
     else:
         return string
 
@@ -87,8 +87,12 @@ class DefaultAttrDict(AttrDict[_VT], Generic[_VT]):
     default: Callable[[], _VT]
     """A callable that accepts no arguments and returns an instance of the value's class."""
 
-    def __init__(self, mapping_or_iterable: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None, *,
-                 default: Callable[[], _VT]):
+    def __init__(
+        self,
+        mapping_or_iterable: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None,
+        *,
+        default: Callable[[], _VT],
+    ):
         if mapping_or_iterable:
             super().__init__(mapping_or_iterable)
         else:
@@ -120,8 +124,15 @@ class _Sentinel:
 _sentinel = _Sentinel()
 
 
-def copy_key_to_attribute(source_dict: dict, key: str, obj: Any, attribute_name: Optional[str] = None, *,
-                          default: Any = _sentinel, transformation: Optional[Callable[[str], Any]] = None):
+def copy_key_to_attribute(
+    source_dict: dict,
+    key: str,
+    obj: Any,
+    attribute_name: Optional[str] = None,
+    *,
+    default: Any = _sentinel,
+    transformation: Optional[Callable[[str], Any]] = None,
+):
     """Copies the value of a dictionary's key to an object.
 
     .. versionadded:: 0.2
@@ -217,6 +228,7 @@ class Interval(Generic[_T]):
 
     .. versionadded:: 0.3
     """
+
     min: Optional[_T] = None
     """The minimum value of the interval."""
 

@@ -38,8 +38,14 @@ class Author(Model, DatetimeMixin):
             await client.batch_mangas(*author.mangas)
     """
 
-    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        client: "MangadexClient",
+        *,
+        id: Optional[str] = None,
+        version: int = 0,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.mangas = []
         self.biographies = DefaultAttrDict(default=lambda: None)
         super().__init__(client, id=id, version=version, data=data)
