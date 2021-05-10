@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 
 class Demographic(Enum):
@@ -17,8 +17,12 @@ class Demographic(Enum):
     """
     SHOUJO = "shoujo"
     """A Shoujo Manga."""
-    JOSEI = "josel"
-    """A Josei Manga."""
+    JOSEI = "josei"
+    """A Josei Manga.
+    
+    .. versionchanged:: 0.3
+        The typo for this field has been corrected.
+    """
     SEINEN = "seinen"
     """A Seinen Manga."""
 
@@ -44,8 +48,13 @@ class MangaStatus(Enum):
     """A manga that has finished publication."""
     HIATUS = "hiatus"
     """A manga where the author is on a known hiatus."""
-    ABANDONED = "abandoned"
-    """A manga where the author has intentionally stopped publishing new chapters."""
+    CANCELLED = ABANDONED = "cancelled"
+    """A manga where the author has intentionally stopped publishing new chapters.
+    
+    .. versionchanged:: 0.3
+        The MangaDex API changed the value from ``abandoned`` to ``cancelled``. ``MangaStatus.ABANDONED`` will 
+        continue to represent the right value, but calling the enum with ``abandoned`` will not.
+    """
 
 
 class FollowStatus(Enum):
@@ -141,3 +150,75 @@ class Relationship(Enum):
     """A :class:`.User` resource."""
     CUSTOM_LIST = 'custom_list'
     """A :class:`.CustomList` resource."""
+
+
+class DuplicateResolutionAlgorithm(Enum):
+    """An enum representing the various methods of resolving duplicate chapters in the same language.
+
+    .. versionadded:: 0.3
+
+    .. note::
+        The filtering algorithms are short-circuiting, meaning that once the chapters for a certain chapter number is
+        lowered down to one item, it will be returned.
+
+    Operation order:
+
+    #. Previous group
+    #. Specific Group
+    #. Specific User
+    #. Creation Date ascending/descending/Views ascending/descending
+
+    .. note::
+        It is an error to specify more than one of the lowest-priority operations, since they all return only one
+        value. Doing so will raise an error.
+    """
+    PREVIOUS_GROUP = auto()
+    """A resolution strategy that attempts to use the same group for the chapter as the previous chapter. This needs 
+    an accompanying strategy to determine the initial group.
+    
+    .. seealso:: :attr:`.SPECIFIC_GROUP`
+    """
+
+    SPECIFIC_GROUP = auto()
+    """A resolution strategy that attempts to only select certain groups. This needs an accompanying strategy for 
+    chapters where the group is not present.
+    
+    .. seealso:: :attr:`.SPECIFIC_USER`
+    """
+
+    SPECIFIC_USER = auto()
+    """A resolution strategy that attempts to only select chapters by certain users. This needs an accompanying 
+    strategy for chapters where the user ia not present.
+    
+    .. seealso:: :attr:`.SPECIFIC_GROUP`
+    """
+
+    CREATION_DATE_ASC = auto()
+    """A resolution strategy that will select the chapter that was created first.
+    
+    .. seealso:: :attr:`.CREATION_DATE_DESC`
+    """
+
+    CREATION_DATE_DESC = auto()
+    """A resolution strategy that will select the chapter that was created last.
+    
+    .. seealso:: :attr:`.CREATION_DATE_ASC`
+    """
+
+    VIEWS_ASC = auto()
+    """A resolution strategy that will select the chapter with the least views.
+    
+    .. warning::
+        This is not implemented yet as the API does not return view counts.
+        
+    .. seealso:: :attr:`.VIEWS_DESC`
+    """
+
+    VIEWS_DESC = auto()
+    """A resolution strategy that will select the chapter with the most views.
+    
+    .. warning::
+        This is not implemented yet as the API does not return view counts.
+        
+    .. seealso:: :attr:`.VIEWS_ASC`
+    """

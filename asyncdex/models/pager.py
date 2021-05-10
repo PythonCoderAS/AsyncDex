@@ -1,0 +1,105 @@
+import asyncio
+from collections import deque
+from math import ceil
+from typing import Any, AsyncIterator, Generic, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
+
+from .abc import Model
+
+if TYPE_CHECKING:
+    from ..client import MangadexClient
+
+_ModelT = TypeVar("_ModelT", bound=Model)
+
+
+class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
+    """A pager object which automatically paginates responses with an offset and limit combo.
+
+    .. versionadded:: 0.3
+
+    :param limit_size: The maximum limit for each request. Defaults to ``100``.
+    :type limit_size: int
+    """
+
+    url: str
+    """The URL to paginate against."""
+
+    model: Type[_ModelT]
+    """A subclass of :class:`.Model` to transform the results into."""
+
+    client: "MangadexClient"
+    """The client that is associated with the Pager."""
+
+    params: MutableMapping[str, Any]
+    """Additional params to include in every request."""
+
+    def __init__(self, url: str, model: Type[_ModelT], client: "MangadexClient", *, params: Optional[MutableMapping[
+        str, Any]] = None, limit_size: int = 100):
+        self.url = url
+        self.model = model
+        self.client = client
+        self.params = params or {}
+        self.params.setdefault("offset", 0)
+        self.params["limit"] = limit_size
+        self._queue = deque()
+        self._started_parallel = None
+        # A queue that fills after network requests. This is used to only the return the first of a lot of responses
+        # on the initial request, and return more items afterwards.
+        self._done = False
+
+    def __aiter__(self) -> AsyncIterator[_ModelT]:
+        """Return an async iterator (itself)
+
+        :return: The Pager class.
+        :rtype: Pager
+        """
+        return self
+
+    async def _do_request(self, offset=None):
+        offset = offset or self.params["offset"]
+        r = await self.client.request("GET", self.url, params={**self.params, "offset": offset})
+        r.raise_for_status()
+        if r.status == 204:
+            self._done = True
+            raise StopAsyncIteration
+        json = await r.json()
+        r.close()
+        if not self._started_parallel:
+            self._started_parallel = True
+            for item in json["results"]:
+                self._queue.append(self.model(self.client, data=item))
+            if json["total"] <= self.params["offset"] + self.params["limit"]:
+                self._done = True
+            else:
+                self.params["offset"] += self.params["limit"]
+                extra = int(ceil((json["total"] - self.params["limit"]) / self.params["limit"]))
+                reqs = []
+                for i in range(extra):
+                    reqs.append(asyncio.create_task(self._do_request(self.params["offset"] + self.params["limit"] * i)))
+                data = await asyncio.gather(*reqs)
+                for items in data:
+                    for item in items:
+                        self._queue.append(item)
+                self._done = True
+        else:
+            return [self.model(self.client, data=item) for item in json["results"]]
+
+    async def __anext__(self) -> _ModelT:
+        """Return a model from the queue. If there are no items remaining, a request is made to fetch the next set of
+        items.
+
+        :return: The new model.
+        :rtype: Model
+        """
+        if len(self._queue) == 0:
+            if self._done:
+                raise StopAsyncIteration
+            await self._do_request()
+        return self._queue.popleft()
+
+    def __repr__(self) -> str:
+        """Provide a string representation of the object.
+
+        :return: The string representation
+        :rtype: str
+        """
+        return f"{type(self).__name__}(url={self.url!r}, offset={self.params['offset']}, limit={self.params['limit']})"

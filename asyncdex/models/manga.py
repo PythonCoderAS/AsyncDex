@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .abc import Model
 from .author import Author
+from .chapter import ChapterList
 from .mixins import DatetimeMixin
 from .tag import Tag
 from .title import TitleList
@@ -34,11 +35,19 @@ class Manga(Model, DatetimeMixin):
     locked: bool
     """A locked manga. Usually means that chapter details cannot be modified."""
 
-    last_volume: Optional[int]
-    """The last volume of the manga. ``None`` if it is not specified or does not exist."""
+    last_volume: Optional[str]
+    """The last volume of the manga. ``None`` if it is not specified or does not exist.
+    
+    .. versionchanged:: 0.3
+        Changed to a string in order to better match the API specification.
+    """
 
-    last_chapter: Optional[int]
-    """The last chapter of the manga. ``None`` if it is not specified or does not exist."""
+    last_chapter: Optional[str]
+    """The last chapter of the manga. ``None`` if it is not specified or does not exist.
+    
+    .. versionchanged:: 0.3
+        Changed to a string in order to better match the API specification.
+    """
 
     demographic: Demographic
     """The manga's demographic."""
@@ -108,6 +117,12 @@ class Manga(Model, DatetimeMixin):
 
     english_translation_url: Optional[str]
     """The URL for the official English translation of the manga, if it exists."""
+
+    chapters: ChapterList
+    """A :class:`.ChapterList` representing the chapters of the manga.
+    
+    .. versionadded:: 0.3
+    """
 
     @property
     def anilist_url(self) -> Optional[str]:
@@ -216,6 +231,7 @@ class Manga(Model, DatetimeMixin):
         self.tags = []
         self.titles = DefaultAttrDict(default=lambda: TitleList())
         self.descriptions = DefaultAttrDict(default=lambda: None)
+        self.chapters = ChapterList(self)
         super().__init__(client, id=id, version=version, data=data)
 
     def _process_titles(self, title_dict: Dict[str, str]):
@@ -236,12 +252,12 @@ class Manga(Model, DatetimeMixin):
                     self.descriptions[key] = value
             copy_key_to_attribute(attributes, "isLocked", self, "locked", default=False)
             copy_key_to_attribute(attributes, "originalLanguage", self, "original_language")
-            copy_key_to_attribute(attributes, "lastVolume", self, "last_volume",
-                                  transformation=lambda num: int(num) if num else num)
-            copy_key_to_attribute(attributes, "lastChapter", self, "last_chapter",
-                                  transformation=lambda num: int(num) if num else num)
+            copy_key_to_attribute(attributes, "lastVolume", self, "last_volume")
+            copy_key_to_attribute(attributes, "lastChapter", self, "last_chapter")
             copy_key_to_attribute(attributes, "publicationDemographic", self, "demographic",
                                   transformation=lambda attrib: Demographic(attrib) if attrib else attrib)
+            if "status" in attributes and attributes["status"] == "hitaus":
+                attributes["status"] = "hiatus"
             copy_key_to_attribute(attributes, "status", self,
                                   transformation=lambda attrib: MangaStatus(attrib) if attrib else attrib)
             copy_key_to_attribute(attributes, "year", self,
@@ -271,6 +287,8 @@ class Manga(Model, DatetimeMixin):
                 copy_key_to_attribute(links, "raw", self, "raw_url")
                 copy_key_to_attribute(links, "engtl", self, "english_translation_url")
             self._parse_relationships(data)
+            self.chapters = ChapterList(self)
+
 
     async def fetch(self):
         await self._fetch("manga")

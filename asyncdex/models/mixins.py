@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, TypeVar
 
 from ..utils import copy_key_to_attribute
+
+_T = TypeVar("_T", bound="DatetimeMixin")
 
 
 class DatetimeMixin:
@@ -34,8 +36,7 @@ class DatetimeMixin:
         """The last time the object was modified. This will return the creation time if the object was never updated
         after creation, or the modification time if it has.
 
-        .. seealso:: :attr:`.created_at`
-        .. seealso:: :attr:`.updated_at`
+        .. seealso:: :attr:`.created_at`, :attr:`.updated_at`
 
         :return: The last time the object was changed as a :class:`datetime.datetime` object.
 
@@ -51,3 +52,65 @@ class DatetimeMixin:
                               transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib)
         copy_key_to_attribute(attributes, "updatedAt", self, "updated_at",
                               transformation=lambda attrib: datetime.fromisoformat(attrib) if attrib else attrib)
+
+    def __lt__(self: _T, other: _T) -> bool:
+        """Compares the two object's creation times to find if the current model's creation time is less than the 
+        other model's creation time.
+
+        .. versionadded:: 0.3
+
+        :param other: The other model.
+        :type other: DatetimeMixin
+        :return: Whether or not the current model's creation time is less than the other model's creation time.
+        :rtype: bool
+        """
+        if type(self) == type(other):
+            return self.created_at < other.created_at
+        return NotImplemented
+
+    def __le__(self: _T, other: _T) -> bool:
+        """Compares the two object's creation times to find if the current model's creation time is less than or
+        equal to the other model's creation time.
+
+        .. versionadded:: 0.3
+
+        :param other: The other model.
+        :type other: DatetimeMixin
+        :return: Whether or not the current model's creation time is less than or equal to the other model's creation
+            time.
+        :rtype: bool
+        """
+        if type(self) == type(other):
+            return self.created_at <= other.created_at
+        return NotImplemented
+
+    def __gt__(self: _T, other: _T) -> bool:
+        """Compares the two object's creation times to find if the current model's creation time is greater than the 
+        other model's creation time.
+
+        .. versionadded:: 0.3
+
+        :param other: The other model.
+        :type other: DatetimeMixin
+        :return: Whether or not the current model's creation time is greater than the other model's creation time.
+        :rtype: bool
+        """
+        if type(self) == type(other):
+            return self.created_at > other.created_at
+        return NotImplemented
+
+    def __ge__(self: _T, other: _T) -> bool:
+        """Compares the two object's creation times to find if the current model's creation time is greater than or
+        equal to the other model's creation time.
+
+        .. versionadded:: 0.3
+
+        :param other: The other model.
+        :type other: DatetimeMixin
+        :return: Whether or not the current model's creation time is greater than or equal to the other model's creation
+            time.
+        :rtype: bool
+        """
+        if type(self) == type(other):
+            return self.created_at >= other.created_at
+        return NotImplemented

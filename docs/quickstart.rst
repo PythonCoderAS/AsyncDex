@@ -38,4 +38,5 @@ View your manga follows list:
 
     response = await client.request("GET", "/user/follows/manga")
     json = await response.json()
+    response.close()
     [print(item["data"]["id"]) for item in json["results"]]

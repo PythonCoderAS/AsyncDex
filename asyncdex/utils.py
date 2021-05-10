@@ -1,11 +1,14 @@
-from typing import Any, Callable, Dict, Generic, Iterable, Mapping, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
 
 from .enum import Relationship
 
 if TYPE_CHECKING:
     from .models.abc import Model
+
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+_T = TypeVar("_T")
 
 
 def remove_prefix(prefix: str, string: str) -> str:
@@ -61,9 +64,20 @@ class AttrDict(dict, Dict[str, _VT], Generic[_VT]):
         """
         return f"{type(self).__name__}{super().__repr__()}"
 
+    def first(self) -> _VT:
+        """Return the first entry in the dictionary.
+
+        :return: The first entry.
+        :raises: :class:`KeyError` if there are no entries in the dictionary.
+        :rtype: Any
+        """
+        if not self:
+            raise KeyError
+        return self[next(iter(self.keys()))]
+
 
 class DefaultAttrDict(AttrDict[_VT], Generic[_VT]):
-    """A :class:`.AttrDict` with a default.
+    """An :class:`.AttrDict` with a default.
 
     .. versionadded:: 0.2
     """
@@ -144,6 +158,9 @@ def parse_relationships(data: dict, obj: "Model"):
 
     .. versionadded:: 0.2
 
+    .. versionchanged:: 0.3
+        Added support for :class:`.Chapter`, :class:`.User, and :class:`.Group` objects.
+
     :param data: The raw data received from the API.
     :type data: dict
     :param obj: The object to add the models to.
@@ -151,8 +168,6 @@ def parse_relationships(data: dict, obj: "Model"):
     """
     # Notes for future contributors: As of May 7, the MangaDex API has a quirk where it sends the same relationship
     # (same UUID and same type) multiple times. Until this bug is fixed, I had to check that each UUID was unique.
-    from .models.manga import Manga
-    from .models.author import Author
     relationship_data = {}
     seen_uuids = {}
     if "relationships" in data:
@@ -163,17 +178,102 @@ def parse_relationships(data: dict, obj: "Model"):
             if relationship_type == Relationship.MANGA:
                 dupe_list = seen_uuids.setdefault("mangas", [])
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("mangas", []).append(Manga(obj.client, id=relationship_id))
+                    relationship_data.setdefault("mangas", []).append(obj.client.get_manga(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.AUTHOR:
                 dupe_list = seen_uuids.setdefault("authors", [])
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("authors", []).append(Author(obj.client, id=relationship_id))
+                    relationship_data.setdefault("authors", []).append(obj.client.get_author(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.ARTIST:
                 dupe_list = seen_uuids.setdefault("artists", [])
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("artists", []).append(Author(obj.client, id=relationship_id))
+                    relationship_data.setdefault("artists", []).append(obj.client.get_author(relationship_id))
+                    dupe_list.append(relationship_id)
+            elif relationship_type == Relationship.CHAPTER:
+                dupe_list = seen_uuids.setdefault("chapters", [])
+                if relationship_id not in dupe_list:
+                    relationship_data.setdefault("chapters", []).append(obj.client.get_chapter(relationship_id))
+                    dupe_list.append(relationship_id)
+            elif relationship_type == Relationship.USER:
+                dupe_list = seen_uuids.setdefault("users", [])
+                if relationship_id not in dupe_list:
+                    relationship_data.setdefault("_users", []).append(obj.client.get_user(relationship_id))
+                    # Why `_users`? Because we never want a variable called users. All objects returning user
+                    # relationships will not have a variable called users.
+                    dupe_list.append(relationship_id)
+            elif relationship_type == Relationship.SCANLATION_GROUP:
+                dupe_list = seen_uuids.setdefault("groups", [])
+                if relationship_id not in dupe_list:
+                    relationship_data.setdefault("groups", []).append(obj.client.get_group(relationship_id))
                     dupe_list.append(relationship_id)
     for key, value in relationship_data.items():
         setattr(obj, key, value)
+
+
+@dataclass(frozen=True)
+class Interval(Generic[_T]):
+    """A class representing an interval.
+
+    .. versionadded:: 0.3
+    """
+    min: Optional[_T] = None
+    """The minimum value of the interval."""
+
+    max: Optional[_T] = None
+    """The maximum value of the interval."""
+
+    inclusive: bool = True
+    """Whether or not the interval includes the min and max values or only values after and before respectively are 
+    considered."""
+
+    def __contains__(self, item: _T) -> bool:
+        """Returns whether or not the given item is in the range.
+
+        :param item: The item to check.
+        :type item: Any
+        :return: Whether or not it is in the range.
+        :rtype: bool
+        """
+        if self.min and self.max:
+            if self.inclusive:
+                return self.min <= item <= self.max
+            return self.min < item < self.max
+        elif self.min:
+            if self.inclusive:
+                return self.min <= item
+            return self.min < item
+        elif self.max:
+            if self.inclusive:
+                return item <= self.max
+            return item < self.max
+        return True
+
+
+@dataclass(frozen=True)
+class InclusionExclusionPair(Generic[_T]):
+    """A class representing an inclusion and exclusion pair.
+
+    .. versionadded:: 0.3
+
+    .. note::
+        It is an error to both include and exclude something.
+    """
+
+    include: List[_T] = field(default_factory=list)
+    """Values that should be present."""
+
+    exclude: List[_T] = field(default_factory=list)
+    """Values that should not be present."""
+
+    def matches_include_exclude_pair(self, item: _T) -> bool:
+        """Returns whether or not the item is inside the include and exclude pairs.
+
+        :param item: The item to check.
+        :type item: Any
+        :return: Whether or not it matches the given bounds (in the include list or not in the exclude list).
+        :rtype: bool
+        """
+        if self.include:
+            return item in self.include and item not in self.exclude
+        return True

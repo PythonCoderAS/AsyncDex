@@ -17,7 +17,7 @@ setup(
     author_email='pokestarfan@yahoo.com',
     description='Async MangaDex library',
     long_description=long_desc,
-    install_requires=["aiohttp"],
+    install_requires=["aiohttp", "natsort"],
     extras_require={
         "dev": [
             "sphinx",

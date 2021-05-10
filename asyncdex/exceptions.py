@@ -55,6 +55,7 @@ class Unauthorized(HTTPException):
     stored credentials."""
 
     def __init__(self, path: str, response: Optional[aiohttp.ClientResponse]):
+        AsyncDexException.__init__(self, f"Unauthorized for path {path}.")
         self.path = path
         self.response = response
 

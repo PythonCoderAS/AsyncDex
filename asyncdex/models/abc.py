@@ -18,6 +18,7 @@ class Model(ABC):
 
     .. versionadded:: 0.2
 
+    :raises: :class:`.Missing` if there is no valid ID in the model after parsing provided data.
     :param data: The data received from the server. May be None if there is no data yet.
     :type data: Dict[str, Any]
     """
@@ -58,7 +59,10 @@ class Model(ABC):
 
     @abstractmethod
     async def fetch(self):
-        """Fetch the data to complete any missing non-critical values. This method must call :meth:`.parse`."""
+        """Fetch the data to complete any missing non-critical values.
+
+        :raises: :class:`.InvalidID` if an object with the ID does not exist.
+        """
 
     def __str__(self) -> str:
         """Returns a string representation of the model, usually it's id."""
@@ -66,7 +70,7 @@ class Model(ABC):
 
     def __repr__(self) -> str:
         """Returns a string version of the model useful for development."""
-        return f"{type(self).__name__}(id={self.id})"
+        return f"{type(self).__name__}(id={self.id!r})"
 
     def __eq__(self: _T, other: _T) -> bool:
         """Check if two models are equal to each other.
@@ -116,6 +120,7 @@ class Model(ABC):
             raise InvalidID(self.id, type(self))
         else:
             self.parse(await r.json())
+            r.close()
 
     def __hash__(self):
         return hash((self.id, self.version, self.client))

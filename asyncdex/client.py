@@ -1,7 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta
+from json import dumps as convert_obj_to_json
+from logging import INFO, NullHandler, basicConfig, getLogger
 from types import TracebackType
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union, TypeVar
 
 import aiohttp
 
@@ -9,11 +11,19 @@ from .constants import ratelimit_data, routes
 from .exceptions import InvalidID, Ratelimit, Unauthorized
 from .models.abc import Model
 from .models.author import Author
+from .models.chapter import Chapter
+from .models.group import Group
 from .models.manga import Manga
 from .models.tag import Tag
+from .models.user import User
 from .ratelimit import Ratelimits
 from .utils import remove_prefix
 
+logger = getLogger(__name__)
+getLogger("asyncdex").addHandler(NullHandler())
+
+
+_LegacyModelT = TypeVar("_LegacyModelT", Manga, Chapter, Tag, Group)
 
 class MangadexClient:
     """The main client that runs preforms all of the method requests.
@@ -21,6 +31,11 @@ class MangadexClient:
     .. warning::
         The client object should only be created under an async context. While it should be safe to initialize
         normally, the aiohttp ClientSession does not like this.
+
+    .. warning::
+        The client cannot ratelimit effectively if multiple clients are running on the same program. Furthermore,
+        the ratelimit may not work if multiple other people are accessing the MangaDex API at the same time or the
+        client is running on a shared network.
 
     :param username: The username of the user to authenticate as. Leave blank to not allow login to fetch a new
         refresh token. Specifying the username without specifying the password is an error.
@@ -124,16 +139,22 @@ class MangadexClient:
             self.username = self.password = self.refresh_token = None
         self.ratelimits = Ratelimits(*ratelimit_data)
         self.tag_cache = {}
+        self._request_count = 0
+        self._request_second_start = datetime.utcnow()  # Use utcnow to keep everything using UTF+0 and also helps
+        # with daylight savings.
+        self._request_lock = asyncio.Lock()
         self._session_token: Optional[str] = None
         self._session_token_acquired: Optional[datetime] = datetime(year=2000, month=1, day=1)
         # This is the time when the token is acquired. The client will automatically vacate the token at 15 minutes
         # and 10 seconds.
 
     async def __aenter__(self):
+        """Allow the client to be used with ``async with`` syntax similar to :class:`aiohttp.ClientSession`."""
         await self.session.__aenter__()
         return self
 
-    async def request(self, method: str, url: str, *, params: Optional[Mapping[str, Union[str, Sequence[str]]]] = None,
+    async def request(self, method: str, url: str, *,
+                      params: Optional[Mapping[str, Optional[Union[str, Sequence[str], bool, float]]]] = None,
                       json: Any = None, with_auth: bool = True, retries: int = 3,
                       **session_request_kwargs) -> aiohttp.ClientResponse:
         """Perform a request.
@@ -142,6 +163,14 @@ class MangadexClient:
             All requests have to be released, otherwise connections will not be reused. Make sure to call
             :meth:`aiohttp.ClientResponse.release` on the object returned by the method if you do not read data from
             the response.
+
+        .. note::
+            The request method will log all URLs that are requested. Enable logging on the ``asyncdex`` logger to
+            view them. These requests are made under the ``INFO`` level. Retries are also logged on the ``WARNING``
+            level.
+            
+        .. versionchanged:: 0.3
+            Added a global (shared between all requests made in the client) ratelimit.
         
         :param method: The HTTP method to use for the request. 
         :type method: str
@@ -171,11 +200,11 @@ class MangadexClient:
             # Strategy: Put all the parts into a list, and then use "&".join(<arr>) to add all the parts together
             param_parts = []
             for name, value in params.items():
-                if not isinstance(value, str):
+                if not isinstance(value, str) and hasattr(value, "__iter__"):
                     for item in value:
                         param_parts.append(f"{name}[]={item}")
                 else:
-                    param_parts.append(f"{name}={value}")
+                    param_parts.append(f"{name}={convert_obj_to_json(value)}")
             url += "?" + "&".join(param_parts)
         headers = {}
         if with_auth and not self.anonymous_mode:
@@ -188,11 +217,24 @@ class MangadexClient:
             time_to_sleep, path_obj = await self.ratelimits.check(url, method)
             if time_to_sleep > 0 and path_obj:
                 raise Ratelimit(path_obj.path.name, path_obj.ratelimit_amount, path_obj.ratelimit_expires)
-        req = await self.session.request(method, url, headers=headers, json=json, **session_request_kwargs)
+        if url.startswith(self.api_base):
+            # We only want the ratelimit to only apply to the API urls.
+            async with self._request_lock:
+                # I decided not to throw exceptions for these 1-second ratelimits.
+                self._request_count += 1
+                time_now = datetime.utcnow()
+                time_difference = (time_now - self._request_second_start).total_seconds()
+                if time_difference <= 1 and self._request_count >= 5:
+                    await asyncio.sleep(1)
+                elif time_difference > 1:
+                    self._request_count = 0
+                    self._request_second_start = time_now
+        logger.info("Making %s request to %s", method, url)
+        resp = await self.session.request(method, url, headers=headers, json=json, **session_request_kwargs)
         if path_obj:
-            path_obj.update(req)
+            path_obj.update(resp)
         do_retry = False
-        if req.status == 401:  # Unauthorized
+        if resp.status == 401:  # Unauthorized
             if self.session_token:  # Invalid session token
                 await self.get_session_token()
                 do_retry = True
@@ -201,25 +243,40 @@ class MangadexClient:
                 do_retry = True
             else:
                 try:
-                    raise Unauthorized(url, req)
+                    raise Unauthorized(url, resp)
                 finally:
-                    await req.release()
-        if req.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
-            if req.headers.get("x-ratelimit-retry-after", ""):
+                    await resp.release()
+        if resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
+            if resp.headers.get("x-ratelimit-retry-after", ""):
                 await asyncio.sleep((datetime.utcfromtimestamp(
-                    int(req.headers["x-ratelimit-retry-after"])) - datetime.utcnow()).total_seconds())
-                do_retry = True
+                    int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()).total_seconds())
             else:
-                req.raise_for_status()
-        if req.status // 100 == 5:  # 5xx
+                await asyncio.sleep(1)  # This is probably the result of multiple devices, so sleep for a second. Will
+                # give up on the 4th try though if it is persistent.
+            do_retry = True
+        if resp.status // 100 == 5:  # 5xx
             do_retry = True
         if do_retry:
             if retries > 0:
-                return await self.request(method, url, params=params, json=json, with_auth=with_auth,
-                                          retries=retries - 1, **session_request_kwargs)
+                logger.warning("Retrying %s request to %s because of HTTP code %s", method, url, resp.status)
+                return await self.request(method, url, json=json, with_auth=with_auth, retries=retries - 1,
+                                          **session_request_kwargs)
             else:
-                req.raise_for_status()
-        return req
+                resp.raise_for_status()
+        return resp
+
+    async def _one_off(self, method, url, *, params=None, json=None, with_auth=True, retries=3, **kwargs):
+        """Use for one-off requests where we do not care about the response."""
+        r = await self.request(method, url, params=params, json=json, with_auth=with_auth, retries=retries, **kwargs)
+        r.close()
+
+    async def _get_json(self, method, url, *, params=None, json=None, with_auth=True, retries=3, **kwargs):
+        """Used for getting the json quickly when we don't care about request codes."""
+        r = await self.request(method, url, params=params, json=json, with_auth=with_auth, retries=retries, **kwargs)
+        r.raise_for_status()
+        json = await r.json()
+        r.close()
+        return json
 
     async def get_session_token(self):
         """Get the session token and store it inside the client."""
@@ -227,6 +284,7 @@ class MangadexClient:
             await self.login()
         r = await self.request("POST", routes["session_token"], json={"token": self.refresh_token}, with_auth=False)
         data = await r.json()
+        r.close()
         self.session_token = data["token"]["session"]
         self.refresh_token = data["token"]["refresh"]
 
@@ -251,6 +309,7 @@ class MangadexClient:
         r = await self.request("POST", routes["login"], json={"username": self.username, "password": self.password},
                                with_auth=False)
         data = await r.json()
+        r.close()
         self.session_token = data["token"]["session"]
         self.refresh_token = data["token"]["refresh"]
 
@@ -262,9 +321,11 @@ class MangadexClient:
         self.username = self.password = self.refresh_token = self.session_token = None
         self.anonymous_mode = True
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_val: BaseException, exc_tb: TracebackType):
-        """Exit the client. Performs a logout."""
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException],
+                        exc_tb: Optional[TracebackType]):
+        """Exit the client and calls :meth:`.logout`. This will also close the underlying session object."""
         await self.logout()
+        await self.session.__aexit__(exc_type, exc_val, exc_tb)
 
     def __repr__(self) -> str:
         """Provide a string representation of the client.
@@ -282,6 +343,7 @@ class MangadexClient:
         """
         r = await self.request("GET", routes["tag_list"])
         json = await r.json()
+        r.close()
         for item in json:
             assert item["data"]["id"], "ID missing from tag list"
             tag_id = item["data"]["id"]
@@ -342,21 +404,30 @@ class MangadexClient:
         :rtype: Manga
         """
         r = await self.request("GET", routes["random_manga"])
-        return Manga(self, data=await r.json())
+        try:
+            return Manga(self, data=await r.json())
+        finally:
+            r.close()
 
     async def _do_batch(self, items: Tuple[Model, ...], route_name: str):
         uuid_map: Dict[str, List[Model]] = {}
         for item in items:
             uuid_map.setdefault(item.id, []).append(item)
-        while uuid_map:
-            uuids_for_this_batch = list(uuid_map.keys())[:100]
-            r = await self.request("GET", routes[route_name], params=dict(ids=uuids_for_this_batch))
-            for item in (await r.json())["results"]:
+        req_list = []
+        uuids = list(uuid_map.keys())
+        while uuids:
+            uuids_for_this_batch = uuids[:100]
+            assert len(uuids_for_this_batch) <= 100, "Why?"
+            uuids = uuids[100:]
+            req_list.append(asyncio.create_task(self._get_json("GET", routes[route_name], params=dict(limit=100,
+                                                                                                      ids=uuids_for_this_batch))))
+        data = await asyncio.gather(*req_list)
+        for results in data:
+            for item in results["results"]:
                 item_id = item["data"]["id"]
                 assert item_id, "Missing ID"
                 for obj in uuid_map[item_id]:
                     obj.parse(item)
-                uuid_map.pop(item_id)
 
     async def batch_authors(self, *authors: Author):
         """Updates a lot of authors at once, reducing the time needed to update tens or hundreds of authors.
@@ -392,10 +463,145 @@ class MangadexClient:
 
         .. versionadded:: 0.2
 
-        .. warning::
-            If duplicate mangas are specified, only one manga instance will be updated.
-
         :param mangas: A tuple of all the mangas to update.
         :type mangas: Tuple[Manga, ...]
         """
         await self._do_batch(mangas, "search")
+
+    def get_chapter(self, id: str) -> Chapter:
+        """Get a chapter using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. seealso:: :meth:`.ChapterList.get`.
+
+        .. warning::
+            This method returns a **lazy** Chapter instance. Call :meth:`.Chapter.fetch` on the returned object to see
+            any values.
+
+        :param id: The chapter's UUID.
+        :type id: str
+        :return: A :class:`.Chapter` object.
+        :rtype: Chapter
+        """
+        return Chapter(self, id=id)
+
+    async def batch_chapters(self, *chapters: Chapter):
+        """Updates a lot of chapters at once, reducing the time needed to update tens or hundreds of chapters.
+
+        .. versionadded:: 0.3
+
+        .. seealso:: :meth:`.ChapterList.get`.
+
+        :param chapters: A tuple of all the chapters to update.
+        :type chapters: Tuple[Chapter, ...]
+        """
+        await self._do_batch(chapters, "chapter_list")
+
+    def get_user(self, id: str) -> User:
+        """Get a user using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. warning::
+            This method returns a **lazy** User instance. Call :meth:`.User.fetch` on the returned object to see
+            any values.
+
+        :param id: The user's UUID.
+        :type id: str
+        :return: A :class:`.User` object.
+        :rtype: User
+        """
+        return User(self, id=id)
+
+    async def logged_in_user(self) -> User:
+        """Get the user that is currently logged in.
+
+        .. versionadded:: 0.3
+
+        :return: A :class:`.User` object.
+        :rtype: User
+        """
+        r = await self.request("GET", routes["logged_in_user"])
+        json = await r.json()
+        r.close()
+        return User(self, data=json)
+
+    async def ping(self):
+        """Ping the server. This will throw an error if there is any error in making connections, whether with the
+        client or the server.
+
+        .. versionadded:: 0.3
+        """
+        return await self._one_off("GET", routes["ping"])
+
+    async def convert_legacy(self, model: Type[_LegacyModelT], ids: List[int]) -> Dict[int, _LegacyModelT]:
+        """Convert a list of legacy IDs to the new UUID system.
+        
+        .. versionadded:: 0.3
+
+        :param model: The model that represents the type of conversion. The endpoint allows conversions of old
+            mangas, chapters, tags, and groups.
+        :type model: Type[Manga, Chapter, Tag, Group]
+        :param ids: The list of integer IDs to convert.
+        :type ids: List[int]
+        :return: A dictionary mapping old IDs to instances of the model with the new UUIDs.
+
+            .. note::
+                Except for tags, all other models will be lazy models. However, batch methods exist for all other
+                models.
+
+        :rtype: Dict[int, Model]
+        """
+        conversion_map = {}
+        enqueued = []
+        for i in range(1000, len(ids), 1000):
+            enqueued.append(asyncio.create_task(self.convert_legacy(model, ids[i:i+1000])))
+        ids = ids[:1000]
+        if enqueued:
+            data = await asyncio.gather(*enqueued)
+            for item in data:
+                conversion_map.update(item)
+        if issubclass(model, Manga):
+            conversion_type = "manga"
+        elif issubclass(model, Chapter):
+            conversion_type = "chapter"
+        elif issubclass(model, Group):
+            conversion_type = "group"
+        elif issubclass(model, Tag):
+            conversion_type = "tag"
+        else:
+            raise ValueError("Model param must be a (sub)class of Manga, Chapter, Group, or Tag.")
+        r = await self.request("POST", routes["legacy"], json={"type": conversion_type, "ids": ids})
+        json = await r.json()
+        r.close()
+        for item in json:
+            attribs = item["data"]["attributes"]
+            conversion_map[attribs["legacyId"]] = model(self, id=attribs["newId"])
+        return conversion_map
+    
+    def get_group(self, id: str) -> Group:
+        """Get a group using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. warning::
+            This method returns a **lazy** Group instance. Call :meth:`.Group.fetch` on the returned object to see
+            any values.
+
+        :param id: The group's UUID.
+        :type id: str
+        :return: A :class:`.Group` object.
+        :rtype: Group
+        """
+        return Group(self, id=id)
+
+    async def batch_groups(self, *groups: Group):
+        """Updates a lot of groups at once, reducing the time needed to update tens or hundreds of groups.
+
+        .. versionadded:: 0.3
+
+        :param groups: A tuple of all the groups to update.
+        :type groups: Tuple[Group, ...]
+        """
+        await self._do_batch(groups, "group_list")
