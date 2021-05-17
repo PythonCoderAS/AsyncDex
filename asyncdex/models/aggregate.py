@@ -86,8 +86,9 @@ class MangaAggregate(Dict[Optional[str], VolumeAggregate]):
         """
         return sum(item.total() for item in self.values())
 
-    def parse(self, data: Dict[
-        str, Union[str, Dict[str, Dict[str, Union[str, int, Dict[str, Dict[str, Union[str, int]]]]]]]]):
+    def parse(
+        self, data: Dict[str, Union[str, Dict[str, Dict[str, Union[str, int, Dict[str, Dict[str, Union[str, int]]]]]]]]
+    ):
         """Parse aggregate data."""
         for key, value in data["volumes"].items():
             if key == "N/A":

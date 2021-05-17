@@ -57,6 +57,7 @@ Added
     * :meth:`.get_mangas`
     * :meth:`.report_page`
     * :meth:`.MangadexClient.close`
+* :meth:`.ChapterList.filter` has two new parameters: ``read`` and ``volumes``.
 
 Changed
 +++++++

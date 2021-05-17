@@ -317,7 +317,7 @@ class MangadexClient:
         :raises: :class:`.Unauthorized`
         """
         if self.anonymous_mode:
-            raise Unauthorized(path)
+            raise Unauthorized(path, None)
 
     @property
     def session_token(self) -> Optional[str]:

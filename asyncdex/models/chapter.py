@@ -3,6 +3,7 @@ import re
 import warnings
 from collections import defaultdict
 from datetime import datetime
+from functools import partial
 from os import makedirs
 from os.path import exists, join
 from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple, Union
@@ -87,8 +88,14 @@ class Chapter(Model, DatetimeMixin):
     read: bool
     """Whether or not the chapter is read."""
 
-    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        client: "MangadexClient",
+        *,
+        id: Optional[str] = None,
+        version: int = 0,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.read = False
         super().__init__(client, id=id, version=version, data=data)
 
@@ -467,7 +474,7 @@ def _resolve_duplicates(
                 if set_match_prio:
                     set_group[set_match_prio].append(item)
             if set_group:
-                matches_found = sorted(set_group.items(), key=lambda item: item[0])[0][1]
+                matches_found = sorted(set_group.items(), key=lambda i: i[0])[0][1]
         if len(matches_found) > 1 and DuplicateResolutionAlgorithm.SPECIFIC_GROUP in algo:
             # Either we did not go the last time or there were more than one chapter with the same group priority.
             # Now we try if the "Specific Group" strategy was chosen.
@@ -586,6 +593,8 @@ class ChapterList(List[Chapter]):
         duplicate_strategy_users: Optional[List[User]] = None,
         groups: Optional[InclusionExclusionPair[Group]] = None,
         users: Optional[InclusionExclusionPair[User]] = None,
+        read: Optional[bool] = None,
+        volumes: Optional[InclusionExclusionPair[int]] = None,
     ) -> "ChapterList":
         """Filter the chapter list and return a new :class:`.ChapterList`. Calling this method without specifying any
         additional filtering mechanisms will return a shallow copy of the list.
@@ -596,6 +605,9 @@ class ChapterList(List[Chapter]):
         #. Filter by the intervals
         #. Filter by the inclusion and exclusion pairs
         #. Filter duplicates
+
+        .. versionadded:: 0.5
+            The ``read`` and ``volume`` parameters
 
         :param locales: The locales that should be present in the chapters.
         :type locales: List[str]
@@ -673,7 +685,7 @@ class ChapterList(List[Chapter]):
         :param views: An :class:`.Interval` of the views that a manga can have.
 
             .. warning::
-                The mangadex API does not return views yet, so specifying something for this parameter will result in
+                The MangaDex API does not return views yet, so specifying something for this parameter will result in
                 :class:`.NotImplementedError` being raised.
 
             Example intervals:
@@ -715,7 +727,7 @@ class ChapterList(List[Chapter]):
 
                 from asyncdex import InclusionExclusionPair
                 include = InclusionExclusionPair(include=[5, 6])
-                excluse = InclusionExclusionPair(exclude=[7, 8, 9.5])
+                exclude = InclusionExclusionPair(exclude=[7, 8, 9.5])
 
         :type chapter_numbers: InclusionExclusionPair[float]
         :param remove_duplicates: Whether or not to remove duplicate chapters, ie chapters with the same chapter number.
@@ -753,6 +765,10 @@ class ChapterList(List[Chapter]):
         :type users: InclusionExclusionPair[User]
         :param groups: An :class:`.InclusionExclusionPair` denoting the groups to include/exclude from the listing.
         :type groups: InclusionExclusionPair[Group]
+        :param read: Whether or not the manga is read.
+        :type read: bool
+        :param volumes: An :class:`.InclusionExclusionPair` denoting the volumes to include/exclude from the listing.
+        :type volumes: InclusionExclusionPair[int]
         :return: A filtered :class:`.ChapterList`.
 
             .. note::
@@ -775,6 +791,8 @@ class ChapterList(List[Chapter]):
             duplicate_strategy_users,
             groups,
             users,
+            read,
+            volumes,
         )
         if options.count(None) == len(options) and not remove_duplicates:
             return ChapterList(self.manga, entries=self.copy())
@@ -807,6 +825,10 @@ class ChapterList(List[Chapter]):
             )
         if users:
             base = filter(lambda chapter: users.matches_include_exclude_pair(chapter.user), base)
+        if read is not None:
+            base = filter(lambda chapter: chapter.read == read, base)
+        if volumes:
+            base = filter(lambda chapter: volumes.matches_include_exclude_pair(chapter.volume), base)
         final = list(base)
         if remove_duplicates:
             final = _resolve_duplicates(final, duplicate_strategy, duplicate_strategy_groups, duplicate_strategy_users)
@@ -922,42 +944,42 @@ class ChapterList(List[Chapter]):
             return_mapping[self[num]] = item
         return return_mapping
 
-    def group_by_volumes(self) -> Dict[Optional[str], List[Chapter]]:
+    def group_by_volumes(self) -> Dict[Optional[str], "ChapterList"]:
         """Creates a dictionary mapping volume numbers to chapters.
 
         .. versionadded:: 0.5
 
         :return: A dictionary where the keys are volume numbers and the values are a list of :class:`.Chapter` objects.
-        :rtype: Dict[Optional[str], List[Chapter]]
+        :rtype: Dict[Optional[str], ChapterList]
         """
-        dd = defaultdict(list)
+        dd = defaultdict(partial(ChapterList, self.manga))
         for item in self:
             dd[item.volume].append(item)
         return dict(dd)
 
-    def group_by_numbers(self) -> Dict[Optional[str], List[Chapter]]:
+    def group_by_numbers(self) -> Dict[Optional[str], "ChapterList"]:
         """Creates a dictionary mapping chapter numbers to chapters.
 
         .. versionadded:: 0.5
 
         :return: A dictionary where the keys are chapter numbers and the values are a list of :class:`.Chapter` objects.
-        :rtype: Dict[Optional[str], List[Chapter]]
+        :rtype: Dict[Optional[str], ChapterList]
         """
-        dd = defaultdict(list)
+        dd = defaultdict(partial(ChapterList, self.manga))
         for item in self:
             dd[item.number].append(item)
         return dict(dd)
 
-    def group_by_volume_and_chapters(self) -> Dict[Tuple[Optional[str], Optional[str]], List[Chapter]]:
+    def group_by_volume_and_chapters(self) -> Dict[Tuple[Optional[str], Optional[str]], "ChapterList"]:
         """Creates a dictionary mapping volume numbers and chapter numbers to chapters.
 
         .. versionadded:: 0.5
 
         :return: A dictionary where the keys are a tuple of volume and chapter numbers and the values are a list of
             :class:`.Chapter` objects.
-        :rtype: Dict[Tuple[Optional[str], Optional[str]], List[Chapter]]
+        :rtype: Dict[Tuple[Optional[str], Optional[str]], ChapterList]
         """
-        dd = defaultdict(list)
+        dd = defaultdict(partial(ChapterList, self.manga))
         for item in self:
             dd[(item.volume, item.number)].append(item)
         return dict(dd)
@@ -1007,6 +1029,7 @@ class ChapterList(List[Chapter]):
 
         .. versionadded:: 0.5
         """
+        self.manga.client.raise_exception_if_not_authenticated(routes["manga_read"])
         r = await self.manga.client.request("GET", routes["manga_read"].format(id=self.manga.id))
         self.manga._check_404(r)
         r.raise_for_status()
