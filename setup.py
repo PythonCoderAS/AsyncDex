@@ -18,7 +18,7 @@ setup(
     description="Async MangaDex library",
     long_description=long_desc,
     install_requires=["aiohttp", "natsort"],
-    extras_require={"dev": ["sphinx", "sphinx-book-theme"]},
+    extras_require={"dev": ["sphinx", "sphinx-rtd-theme"]},
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
