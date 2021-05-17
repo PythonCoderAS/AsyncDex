@@ -93,6 +93,7 @@ ratelimit_data: List[PathRatelimit] = [
 """
 
 routes: Dict[str, str] = {
+    "aggregate": "/manga/{id}/aggregate",
     "author": "/author/{id}",
     "author_list": "/author",
     "chapter": "/chapter/{id}",

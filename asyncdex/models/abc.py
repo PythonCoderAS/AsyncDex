@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, TYPE_CHECKING, TypeVar
 
+from aiohttp import ClientResponse
+
 from ..constants import routes
 from ..exceptions import InvalidID, Missing
 from ..utils import copy_key_to_attribute, parse_relationships
@@ -121,13 +123,15 @@ class Model(ABC):
     def _parse_relationships(self, data: dict):
         parse_relationships(data, self)
 
-    async def _fetch(self, route_name: str):
-        r = await self.client.request("GET", routes[route_name].format(id=self.id))
+    def _check_404(self, r: ClientResponse):
         if r.status == 404:
             raise InvalidID(self.id, type(self))
-        else:
-            self.parse(await r.json())
-            r.close()
+
+    async def _fetch(self, route_name: str):
+        r = await self.client.request("GET", routes[route_name].format(id=self.id))
+        self._check_404(r)
+        self.parse(await r.json())
+        r.close()
 
     def __hash__(self):
         return hash((self.id, self.version, self.client))

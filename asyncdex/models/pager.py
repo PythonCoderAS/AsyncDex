@@ -55,6 +55,8 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         self.params = params or {}
         self.params.setdefault("offset", 0)
         self.params["limit"] = limit_size
+        if self.limit and self.params["limit"] > self.limit:
+            self.params["limit"] = self.limit
         self._queue = deque()
         self._reqs = deque()
         self._started_parallel = None

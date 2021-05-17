@@ -11,6 +11,7 @@ from aiohttp import ClientError
 from natsort import natsort_keygen
 
 from .abc import Model
+from .aggregate import MangaAggregate, VolumeAggregate
 from .group import Group
 from .mixins import DatetimeMixin
 from .pager import Pager
@@ -859,3 +860,57 @@ class ChapterList(List[Chapter]):
                 item = None
             return_mapping[self[num]] = item
         return return_mapping
+
+    def group_by_volumes(self) -> Dict[Optional[str], List[Chapter]]:
+        """Creates a dictionary mapping volume numbers to chapters.
+
+        :return: A dictionary where the keys are volume numbers and the values are a list of :class:`.Chapter` objects.
+        :rtype: Dict[Optional[str], List[Chapter]]
+        """
+        dd = defaultdict(list)
+        for item in self:
+            dd[item.volume].append(item)
+        return dict(dd)
+
+    def group_by_numbers(self) -> Dict[Optional[str], List[Chapter]]:
+        """Creates a dictionary mapping chapter numbers to chapters.
+
+        :return: A dictionary where the keys are chapter numbers and the values are a list of :class:`.Chapter` objects.
+        :rtype: Dict[Optional[str], List[Chapter]]
+        """
+        dd = defaultdict(list)
+        for item in self:
+            dd[item.number].append(item)
+        return dict(dd)
+
+    def group_by_volume_and_chapters(self) -> Dict[Tuple[Optional[str], Optional[str]], List[Chapter]]:
+        """Creates a dictionary mapping volume numbers and chapter numbers to chapters.
+
+        :return: A dictionary where the keys are a tuple of volume and chapter numbers and the values are a list of
+            :class:`.Chapter` objects.
+        :rtype: Dict[Tuple[Optional[str], Optional[str]], List[Chapter]]
+        """
+        dd = defaultdict(list)
+        for item in self:
+            dd[(item.volume, item.number)].append(item)
+        return dict(dd)
+
+    def calculate_aggregate(self) -> MangaAggregate:
+        """Calculates an aggregate of the chapters contained.
+
+        :return: The aggregate of the chapters.
+        :rtype: MangaAggregate
+        """
+        ma = MangaAggregate()
+        for (volume_number, chapter_number), chapter in self.group_by_volume_and_chapters().items():
+            ma.setdefault(volume_number, VolumeAggregate()).setdefault(chapter_number, 0)
+            ma[volume_number][chapter_number] += 1
+        return ma
+
+    def locales(self) -> List[str]:
+        """Get the list of locales that exist in the chapter list.
+
+        :return: A list of locales.
+        :rtype: List[str]
+        """
+        return list({item.language for item in self})

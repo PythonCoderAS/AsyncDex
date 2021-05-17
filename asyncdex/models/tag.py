@@ -77,3 +77,13 @@ class TagDict(Dict[str, Tag]):
         for item in self.values():
             retval[item.group].append(item)
         return dict(retval)
+
+    def __repr__(self) -> str:
+        """Provide a string representation of the object.
+
+        .. versionadded:: 0.5
+
+        :return: The string representation
+        :rtype: str
+        """
+        return f"{type(self).__name__}{super().__repr__()}"

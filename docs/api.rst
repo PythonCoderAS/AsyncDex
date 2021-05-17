@@ -53,34 +53,38 @@ Exceptions
 .. autoexception:: asyncdex.exceptions.AsyncDexException
     :members:
 
-.. autoexception:: asyncdex.exceptions.Ratelimit
-    :members:
-
 .. autoexception:: asyncdex.exceptions.HTTPException
-    :members:
-
-.. autoexception:: asyncdex.exceptions.Unauthorized
-    :members:
-
-.. autoexception:: asyncdex.exceptions.Missing
     :members:
 
 .. autoexception:: asyncdex.exceptions.InvalidID
     :members:
 
+.. autoexception:: asyncdex.exceptions.Missing
+    :members:
+
+.. autoexception:: asyncdex.exceptions.Ratelimit
+    :members:
+
+.. autoexception:: asyncdex.exceptions.Unauthorized
+    :members:
+
+
 Enums
 +++++
 
-.. autoclass:: asyncdex.enum.Demographic
+MangaDex Enums
+..............
+
+.. autoclass:: asyncdex.enum.ContentRating
     :members:
 
-.. autoclass:: asyncdex.enum.MangaStatus
+.. autoclass:: asyncdex.enum.Demographic
     :members:
 
 .. autoclass:: asyncdex.enum.FollowStatus
     :members:
 
-.. autoclass:: asyncdex.enum.ContentRating
+.. autoclass:: asyncdex.enum.MangaStatus
     :members:
 
 .. autoclass:: asyncdex.enum.Visibility
@@ -89,8 +93,14 @@ Enums
 .. autoclass:: asyncdex.enum.Relationship
     :members:
 
+Filtering
+.........
+
 .. autoclass:: asyncdex.enum.DuplicateResolutionAlgorithm
     :members:
+
+Sorting & Searching
+...................
 
 .. autoclass:: asyncdex.enum.OrderDirection
     :members:
@@ -110,8 +120,87 @@ Constants
 .. autodata:: asyncdex.constants.routes
     :no-value:
 
+Misc
+++++
+
+Aggregates
+..........
+
+.. autoclass:: asyncdex.models.aggregate.MangaAggregate
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.aggregate.VolumeAggregate
+    :members:
+    :special-members: __repr__
+
+Attribute Dictionaries
+......................
+.. autoclass:: asyncdex.utils.AttrDict
+    :members:
+    :special-members: __getattr__, __setattr__, __repr__
+
+.. autoclass:: asyncdex.utils.DefaultAttrDict
+    :members:
+    :special-members: __getattr__, __setattr__, __repr__, __missing__
+
+Filtering Utilities
+...................
+
+.. autoclass:: asyncdex.utils.InclusionExclusionPair
+    :members:
+    :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
+
+.. autoclass:: asyncdex.utils.Interval
+    :members:
+    :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
+
+List Orders
+...........
+
+.. autoclass:: asyncdex.list_orders.AuthorListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.ChapterListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.GroupListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.MangaListOrder
+    :members:
+
+Model Containers
+................
+
+.. autoclass:: asyncdex.models.title.TitleList
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.ChapterList
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.tag.TagDict
+    :members:
+    :special-members: __repr__
+
+Model Mixins
+............
+
+.. autoclass:: asyncdex.models.mixins.DatetimeMixin
+    :members:
+    :special-members: __lt__, __le__, __gt__, __ge__
+
+Pager
+.....
+
+.. autoclass:: asyncdex.models.pager.Pager
+    :members:
+    :special-members: __repr__, __aiter__, __anext__
+
 Ratelimit
-+++++++++
+.........
 
 .. autoclass:: asyncdex.ratelimit.Path
     :members:
@@ -126,63 +215,16 @@ Ratelimit
     :members:
     :special-members: __repr__
 
-Misc
-++++
-
-.. autofunction:: asyncdex.utils.remove_prefix
-
-.. autoclass:: asyncdex.utils.AttrDict
-    :members:
-    :special-members: __getattr__, __setattr__, __repr__
-
-.. autoclass:: asyncdex.utils.DefaultAttrDict
-    :members:
-    :special-members: __getattr__, __setattr__, __repr__, __missing__
+Misc Functions
+..............
 
 .. autofunction:: asyncdex.utils.copy_key_to_attribute
 
 .. autofunction:: asyncdex.utils.parse_relationships
 
-.. autoclass:: asyncdex.models.mixins.DatetimeMixin
-    :members:
-    :special-members: __lt__, __le__, __gt__, __ge__
-
-.. autoclass:: asyncdex.models.title.TitleList
-    :members:
-    :special-members: __repr__
-
-.. autoclass:: asyncdex.models.ChapterList
-    :members:
-    :special-members: __repr__
-
-.. autoclass:: asyncdex.models.pager.Pager
-    :members:
-    :special-members: __repr__, __aiter__, __anext__
-
-.. autoclass:: asyncdex.utils.Interval
-    :members:
-    :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
-
-.. autoclass:: asyncdex.utils.InclusionExclusionPair
-    :members:
-    :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
+.. autofunction:: asyncdex.utils.remove_prefix
 
 .. autofunction:: asyncdex.utils.return_date_string
-
-.. autoclass:: asyncdex.models.tag.TagDict
-    :members:
-
-.. autoclass:: asyncdex.list_orders.AuthorListOrder
-    :members:
-
-.. autoclass:: asyncdex.list_orders.ChapterListOrder
-    :members:
-
-.. autoclass:: asyncdex.list_orders.GroupListOrder
-    :members:
-
-.. autoclass:: asyncdex.list_orders.MangaListOrder
-    :members:
 
 References
 ++++++++++

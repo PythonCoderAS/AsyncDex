@@ -1,11 +1,33 @@
 Changelog
 #########
 
+v0.5
+----
+
+Added
++++++
+
+* :class:`.VolumeAggregate`
+* :class:`.MangaAggregate`
+* :meth:`.TagDict.__repr__`
+* :meth:`.group_by_volumes`
+* :meth:`.group_by_numbers`
+* :meth:`.group_by_volume_and_chapters`
+* :meth:`.calculate_aggregate`
+* :meth:`.locales`
+* :meth:`.aggregate`
+
+Fixed
++++++
+
+* Fixed a bug in :class:`.Pager` where more items would be returned than the given limit.
+
 v0.4
 ----
 
 Added
 +++++
+
 * :func:`.return_date_string`
 * :meth:`.download_all`
 * :attr:`.Pager.limit` to limit total responses,

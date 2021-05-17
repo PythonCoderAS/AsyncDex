@@ -1,11 +1,13 @@
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .abc import Model
+from .aggregate import MangaAggregate
 from .author import Author
 from .chapter import ChapterList
 from .mixins import DatetimeMixin
 from .tag import Tag
 from .title import TitleList
+from ..constants import routes
 from ..enum import ContentRating, Demographic, MangaStatus
 from ..utils import DefaultAttrDict, copy_key_to_attribute
 
@@ -319,3 +321,16 @@ class Manga(Model, DatetimeMixin):
             await client.batch_authors(*manga.authors, *manga.artists)
         """
         await self.client.batch_authors(*self.authors, *self.artists)
+
+    async def aggregate(self) -> MangaAggregate:
+        """Get the aggregate of this manga.
+
+        :return: The manga's aggregate.
+        :rtype: MangaAggregate
+        """
+        r = await self.client.request("GET", routes["aggregate"].format(id=self.id))
+        self._check_404(r)
+        ma = MangaAggregate()
+        ma.parse(await r.json())
+        r.close()
+        return ma
