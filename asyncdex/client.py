@@ -554,7 +554,7 @@ class MangadexClient:
         r.close()
         return User(self, data=json)
 
-    def logged_user_chapter_chapters(self, *, languages: Optional[List[str]] = None, created_after: Optional[datetime] =
+    def logged_user_manga_chapters(self, *, languages: Optional[List[str]] = None, created_after: Optional[datetime] =
     None,
                                   updated_after: Optional[datetime] = None,
                                   published_after: Optional[datetime] = None,
