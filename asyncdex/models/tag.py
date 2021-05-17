@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .abc import Model
 from ..utils import DefaultAttrDict
@@ -20,7 +21,20 @@ class Tag(Model):
         If a language is missing a name, ``None`` will be returned.
     """
 
-    """The version of the tag. Can be used to cache tag objects."""
+    descriptions: DefaultAttrDict[Optional[str]]
+    """A :class:`.DefaultAttrDict` holding the descriptions of the tag.
+    
+    .. versionadded:: 0.4
+    
+    .. note::
+        If a language is missing a description, ``None`` will be returned.
+    """
+
+    group: Optional[str]
+    """The group that the tag belongs to.
+    
+    .. versionadded:: 0.4
+    """
 
     def __init__(
         self,
@@ -31,6 +45,7 @@ class Tag(Model):
         data: Optional[Dict[str, Any]] = None,
     ):
         self.names = DefaultAttrDict(default=lambda: None)
+        self.descriptions = DefaultAttrDict(default=lambda: None)
         super().__init__(client, id=id, version=version, data=data)
 
     def parse(self, data: Dict[str, Any]):
@@ -44,3 +59,21 @@ class Tag(Model):
 
     async def fetch(self):
         await self.client.refresh_tag_cache()
+
+
+class TagDict(Dict[str, Tag]):
+    """An object representing a dictionary of tag UUIDs to tag objects.
+
+    .. versionadded:: 0.4
+    """
+
+    def groups(self) -> Dict[str, List[Tag]]:
+        """Categorizes the tags contained into a dictionary of the groups the tags belong to.
+
+        :return: A dictionary of group name to the list of tags that contain the name.
+        :rtype: Dict[str, List[Tag]]
+        """
+        retval = defaultdict(list)
+        for item in self.values():
+            retval[item.group].append(item)
+        return dict(retval)

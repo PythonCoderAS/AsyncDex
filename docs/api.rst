@@ -92,6 +92,12 @@ Enums
 .. autoclass:: asyncdex.enum.DuplicateResolutionAlgorithm
     :members:
 
+.. autoclass:: asyncdex.enum.OrderDirection
+    :members:
+
+.. autoclass:: asyncdex.enum.TagMode
+    :members:
+
 Constants
 +++++++++
 
@@ -160,3 +166,25 @@ Misc
 .. autoclass:: asyncdex.utils.InclusionExclusionPair
     :members:
     :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
+
+.. autofunction:: asyncdex.utils.return_date_string
+
+.. autoclass:: asyncdex.models.tag.TagDict
+    :members:
+
+.. autoclass:: asyncdex.list_orders.AuthorListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.ChapterListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.GroupListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.MangaListOrder
+    :members:
+
+References
+++++++++++
+
+* .. [#V506_CHANGELOG] This parameter is undocumented in the API as of May 16, 2021. The inclusion of this parameter can be found in the changelog of the v5.0.6 release of the API, found in the `MangaDex Discord <https://discord.com/channels/403905762268545024/839817812012826644/843097446384533544>`_.

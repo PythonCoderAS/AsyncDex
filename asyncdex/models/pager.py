@@ -1,7 +1,7 @@
 import asyncio
 from collections import deque
 from math import ceil
-from typing import Any, AsyncIterator, Generic, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
+from typing import Any, AsyncIterator, Generic, List, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
 
 from .abc import Model
 
@@ -32,6 +32,12 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
     params: MutableMapping[str, Any]
     """Additional params to include in every request."""
 
+    limit: Optional[int]
+    """The Pager will only return up to these many items.
+    
+    .. versionadded:: 0.4
+    """
+
     def __init__(
         self,
         url: str,
@@ -40,14 +46,17 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         *,
         params: Optional[MutableMapping[str, Any]] = None,
         limit_size: int = 100,
+        limit: Optional[int] = None,
     ):
         self.url = url
         self.model = model
         self.client = client
+        self.limit = limit
         self.params = params or {}
         self.params.setdefault("offset", 0)
         self.params["limit"] = limit_size
         self._queue = deque()
+        self._reqs = deque()
         self._started_parallel = None
         # A queue that fills after network requests. This is used to only the return the first of a lot of responses
         # on the initial request, and return more items afterwards.
@@ -60,6 +69,11 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         :rtype: Pager
         """
         return self
+
+    async def _extract_item(self, task: asyncio.Task):
+        items = await task
+        for item in items:
+            self._queue.append(item)
 
     async def _do_request(self, offset=None):
         offset = offset or self.params["offset"]
@@ -78,14 +92,14 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
                 self._done = True
             else:
                 self.params["offset"] += self.params["limit"]
-                extra = int(ceil((json["total"] - self.params["limit"]) / self.params["limit"]))
-                reqs = []
+                limit_left = json["total"]
+                if self.limit is not None and self.limit > 0:
+                    limit_left = self.limit
+                extra = int(ceil((limit_left - self.params["limit"]) / self.params["limit"]))
                 for i in range(extra):
-                    reqs.append(asyncio.create_task(self._do_request(self.params["offset"] + self.params["limit"] * i)))
-                data = await asyncio.gather(*reqs)
-                for items in data:
-                    for item in items:
-                        self._queue.append(item)
+                    self._reqs.append(
+                        asyncio.create_task(self._do_request(offset=self.params["offset"] + self.params["limit"] * i))
+                    )
                 self._done = True
         else:
             return [self.model(self.client, data=item) for item in json["results"]]
@@ -94,13 +108,20 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         """Return a model from the queue. If there are no items remaining, a request is made to fetch the next set of
         items.
 
+        .. versionchanged:: 0.4
+            This method will no longer hang to complete all requests.
+
         :return: The new model.
         :rtype: Model
         """
         if len(self._queue) == 0:
             if self._done:
-                raise StopAsyncIteration
-            await self._do_request()
+                if len(self._reqs) > 0:
+                    await self._extract_item(self._reqs.popleft())
+                else:
+                    raise StopAsyncIteration
+            else:
+                await self._do_request(self.params["offset"])
         return self._queue.popleft()
 
     def __repr__(self) -> str:
@@ -110,3 +131,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         :rtype: str
         """
         return f"{type(self).__name__}(url={self.url!r}, offset={self.params['offset']}, limit={self.params['limit']})"
+
+    async def as_list(self) -> List[_ModelT]:
+        """Returns all items in the Pager as a list."""
+        return [item async for item in self]

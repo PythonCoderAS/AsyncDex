@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
 
 from .enum import Relationship
@@ -289,3 +290,18 @@ class InclusionExclusionPair(Generic[_T]):
         if self.include:
             return item in self.include and item not in self.exclude
         return True
+
+
+def return_date_string(datetime_obj: datetime):
+    """Get a representation of a datetime object suitable for the MangaDex API.
+
+    .. versionadded:: 0.3
+    .. versionchanged:: 0.4
+        The method was changed from a private method to a seperate utility.
+
+    :param datetime_obj: The datetime object.
+    :type datetime_obj: datetime
+    :return: A string representation suitable for the API.
+    :rtype: str
+    """
+    return datetime_obj.strftime("%Y-%m-%dT%H:%M:%S")

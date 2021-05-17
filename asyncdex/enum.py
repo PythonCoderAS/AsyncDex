@@ -16,16 +16,25 @@ class Demographic(Enum):
         spelled without the ``u``. However, the actual API will only recognize the variant including a ``u``. 
         For the library, both variations can be used for the enum.
     """
+
     SHOUJO = "shoujo"
     """A Shoujo Manga."""
+
     JOSEI = "josei"
     """A Josei Manga.
     
     .. versionchanged:: 0.3
         The typo for this field has been corrected.
     """
+
     SEINEN = "seinen"
     """A Seinen Manga."""
+
+    NONE = "none"
+    """A manga without a demographic.
+    
+    .. versionadded:: 0.4
+    """
 
 
 class MangaStatus(Enum):
@@ -46,10 +55,13 @@ class MangaStatus(Enum):
 
     ONGOING = "ongoing"
     """A manga that is actively being published, in volume format, in a magazine like Weekly Shonen, or online."""
+
     COMPLETED = "completed"
     """A manga that has finished publication."""
+
     HIATUS = "hiatus"
     """A manga where the author is on a known hiatus."""
+
     CANCELLED = ABANDONED = "cancelled"
     """A manga where the author has intentionally stopped publishing new chapters.
     
@@ -68,14 +80,19 @@ class FollowStatus(Enum):
 
     READING = "reading"
     """A manga that the user has marked as reading."""
+
     ON_HOLD = "on_hold"
-    """A manga that the user has marked as on_hold."""
+    """A manga that the user has marked as "on hold"."""
+
     PLAN_TO_READ = "plan_to_read"
-    """A manga that the user has marked as plan_to_read."""
+
+    """A manga that the user has marked as "plan to read"."""
     DROPPED = "dropped"
     """A manga that the user has marked as dropped."""
+
     RE_READING = "re_reading"
-    """A manga that the user has marked as re_reading."""
+    """A manga that the user has marked as rereading."""
+
     COMPLETED = "completed"
     """A manga that the user has marked as completed.
     
@@ -99,18 +116,21 @@ class ContentRating(Enum):
         This is the only content rating that means a manga is safe for work. All other values are not safe for work
         (NSFW).
     """
+
     SUGGESTIVE = "suggestive"
     """A manga that is suggestive.
     
     .. note::
         This type of content represents content tagged with the ``Ecchi`` tag.
     """
+
     EROTICA = "erotica"
     """A manga that is erotica.
     
     .. note::
         This type of content represents content tagged with the ``Smut`` tag.
     """
+
     PORNOGRAPHIC = "pornographic"
     """A manga that is pornographic.
     
@@ -129,6 +149,7 @@ class Visibility(Enum):
 
     PUBLIC = "public"
     """A public :class:`.CustomList`."""
+
     PRIVATE = "private"
     """A private :class:`.CustomList`."""
 
@@ -142,18 +163,25 @@ class Relationship(Enum):
 
     MANGA = "manga"
     """A :class:`.Manga` resource."""
+
     CHAPTER = "chapter"
     """A :class:`.Chapter` resource."""
+
     AUTHOR = "author"
     """A :class:`.Author` resource."""
+
     ARTIST = "artist"
     """A :class:`.Author` resource."""
+
     SCANLATION_GROUP = "scanlation_group"
     """A :class:`.Group` resource."""
+
     TAG = "tag"
     """A :class:`.Tag` resource."""
+
     USER = "user"
     """A :class:`.User` resource."""
+
     CUSTOM_LIST = "custom_list"
     """A :class:`.CustomList` resource."""
 
@@ -229,3 +257,29 @@ class DuplicateResolutionAlgorithm(Enum):
         
     .. seealso:: :attr:`.VIEWS_ASC`
     """
+
+
+class OrderDirection(Enum):
+    """An enum representing the various directions that can be used for ordering a list of items.
+
+    .. versionadded:: 0.4
+    """
+
+    ASCENDING = "asc"
+    """Order items from smallest to largest."""
+
+    DESCENDING = "desc"
+    """Order items from largest to smallest."""
+
+
+class TagMode(Enum):
+    """An enum representing the various ways tag inclusion/exclusion can be read by the server.
+
+    .. versionadded:: 0.4
+    """
+
+    AND = "AND"
+    """Manga is included/excluded only if **all** tags are present."""
+
+    OR = "OR"
+    """Manga is included/excluded if **any** tag is present."""

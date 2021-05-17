@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, TYPE_CHECKING
 
 from .abc import Model
-from .mixins import DatetimeMixin
 from ..utils import copy_key_to_attribute
 
 if TYPE_CHECKING:
@@ -22,6 +21,8 @@ class User(Model):
 
     def parse(self, data: Dict[str, Any]):
         super().parse(data)
+        if "id" in data:
+            self.id = data["id"]
         if "data" in data and "attributes" in data["data"]:
             attributes = data["data"]["attributes"]
             copy_key_to_attribute(attributes, "username", self)

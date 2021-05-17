@@ -1,27 +1,30 @@
 import asyncio
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from json import dumps as convert_obj_to_json
-from logging import INFO, NullHandler, basicConfig, getLogger
+from logging import NullHandler, getLogger
 from types import TracebackType
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union, TypeVar
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 import aiohttp
 
 from .constants import ratelimit_data, routes
+from .enum import ContentRating, Demographic, MangaStatus, TagMode
 from .exceptions import InvalidID, Ratelimit, Unauthorized
+from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaListOrder
 from .models.abc import Model
 from .models.author import Author
 from .models.chapter import Chapter
 from .models.group import Group
 from .models.manga import Manga
-from .models.tag import Tag
+from .models.pager import Pager
+from .models.tag import Tag, TagDict
 from .models.user import User
 from .ratelimit import Ratelimits
-from .utils import remove_prefix
+from .utils import remove_prefix, return_date_string
 
 logger = getLogger(__name__)
 getLogger("asyncdex").addHandler(NullHandler())
-
 
 _LegacyModelT = TypeVar("_LegacyModelT", Manga, Chapter, Tag, Group)
 
@@ -91,7 +94,7 @@ class MangadexClient:
     anonymous_mode: bool
     """Whether or not the client is operating in **Anonymous Mode**, where it only accesses public endpoints."""
 
-    tag_cache: Dict[str, Tag]
+    tag_cache: TagDict
     """A cache of tags. This cache will be used to lower the amount of tag objects, and allows for easily updating 
     the attributes of tags. This cache can be refreshed manually by either calling :meth:`.refresh_tag_cache` or 
     fetching data for any tag object.
@@ -99,29 +102,7 @@ class MangadexClient:
     .. versionadded:: 0.2
     """
 
-    @property
-    def session_token(self) -> Optional[str]:
-        """The session token tht the client has obtained. This will be None when the client is operating in anonymous
-        mode, as well as if the client has not obtained a refresh token from the API or if it has been roughly 15
-        minutes since the token was retrieved from the server."""
-        if datetime.utcnow() - self._session_token_acquired > timedelta(minutes=15, seconds=10):
-            self._session_token = None
-        return self._session_token
-
-    @session_token.setter
-    def session_token(self, token: Optional[str]):
-        """Set the session token and the access time
-
-        :param token: The new session token
-        :type token: str
-        :return: None
-        :rtype: None
-        """
-        self._session_token = token
-        if token:
-            self._session_token_acquired = datetime.utcnow()
-        else:
-            self._session_token_acquired = datetime(year=2000, month=1, day=1)
+    # Dunder methods
 
     def __init__(
         self,
@@ -147,7 +128,7 @@ class MangadexClient:
         if anonymous:
             self.username = self.password = self.refresh_token = None
         self.ratelimits = Ratelimits(*ratelimit_data)
-        self.tag_cache = {}
+        self.tag_cache = TagDict()
         self._request_count = 0
         self._request_second_start = datetime.utcnow()  # Use utcnow to keep everything using UTF+0 and also helps
         # with daylight savings.
@@ -161,6 +142,24 @@ class MangadexClient:
         """Allow the client to be used with ``async with`` syntax similar to :class:`aiohttp.ClientSession`."""
         await self.session.__aenter__()
         return self
+
+    async def __aexit__(
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+    ):
+        """Exit the client. This will also close the underlying session object."""
+        self.username = self.password = self.refresh_token = self.session_token = None
+        self.anonymous_mode = True
+        await self.session.__aexit__(exc_type, exc_val, exc_tb)
+
+    def __repr__(self) -> str:
+        """Provide a string representation of the client.
+
+        :return: The string representation
+        :rtype: str
+        """
+        return f"{type(self).__name__}(anonymous={self.anonymous_mode!r}, username={self.username!r})"
+
+    # Request methods
 
     async def request(
         self,
@@ -187,6 +186,9 @@ class MangadexClient:
 
         .. versionchanged:: 0.3
             Added a global (shared between all requests made in the client) ratelimit.
+
+        .. versionchanged:: 0.4
+            Added better handling of string items.
 
         :param method: The HTTP method to use for the request.
         :type method: str
@@ -219,6 +221,8 @@ class MangadexClient:
                 if not isinstance(value, str) and hasattr(value, "__iter__"):
                     for item in value:
                         param_parts.append(f"{name}[]={item}")
+                elif isinstance(value, str):
+                    param_parts.append(f"{name}={value}")
                 else:
                     param_parts.append(f"{name}={convert_obj_to_json(value)}")
             url += "?" + "&".join(param_parts)
@@ -240,7 +244,8 @@ class MangadexClient:
                 self._request_count += 1
                 time_now = datetime.utcnow()
                 time_difference = (time_now - self._request_second_start).total_seconds()
-                if time_difference <= 1 and self._request_count >= 5:
+                if time_difference <= 1.25 and self._request_count >= 5:  # Hopefully this will stop excess retries
+                    # which cripple pagers.
                     await asyncio.sleep(1)
                 elif time_difference > 1:
                     self._request_count = 0
@@ -298,6 +303,32 @@ class MangadexClient:
         r.close()
         return json
 
+    # Authentication
+
+    @property
+    def session_token(self) -> Optional[str]:
+        """The session token tht the client has obtained. This will be None when the client is operating in anonymous
+        mode, as well as if the client has not obtained a refresh token from the API or if it has been roughly 15
+        minutes since the token was retrieved from the server."""
+        if datetime.utcnow() - self._session_token_acquired > timedelta(minutes=15, seconds=10):
+            self._session_token = None
+        return self._session_token
+
+    @session_token.setter
+    def session_token(self, token: Optional[str]):
+        """Set the session token and the access time
+
+        :param token: The new session token
+        :type token: str
+        :return: None
+        :rtype: None
+        """
+        self._session_token = token
+        if token:
+            self._session_token_acquired = datetime.utcnow()
+        else:
+            self._session_token_acquired = datetime(year=2000, month=1, day=1)
+
     async def get_session_token(self):
         """Get the session token and store it inside the client."""
         if self.refresh_token is None:
@@ -342,20 +373,7 @@ class MangadexClient:
         self.username = self.password = self.refresh_token = self.session_token = None
         self.anonymous_mode = True
 
-    async def __aexit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
-    ):
-        """Exit the client and calls :meth:`.logout`. This will also close the underlying session object."""
-        await self.logout()
-        await self.session.__aexit__(exc_type, exc_val, exc_tb)
-
-    def __repr__(self) -> str:
-        """Provide a string representation of the client.
-
-        :return: The string representation
-        :rtype: str
-        """
-        return f"{type(self).__name__}(anonymous={self.anonymous_mode!r}, username={self.username!r})"
+    # Methods to get models
 
     async def refresh_tag_cache(self):
         """Refresh the internal tag cache.
@@ -381,9 +399,33 @@ class MangadexClient:
 
         .. versionadded:: 0.2
 
-        .. note::
-            In order to find a tag by the tag's name, it is recommended to call :meth:`.refresh_tag_cache` and then
-            iterate over :attr:`.tag_cache`.
+        .. admonition:: Finding a Tag by Name
+
+            Finding a tag by name is a feature that many people want. However, there is no endpoint that exists in
+            the API that lets us provide a name and get back a list of Tags that match the name. It is not needed,
+            as there only exists a relatively amount of tags, which can be loaded from a single request.
+
+            The client maintains a cache of the tags in order to lower memory usage and allow tag updates to be
+            easily distributed to all mangas, since there are a relatively small amount of tags compared to authors,
+            chapters, mangas, and users. The client also provides a method to completely load the tag list and update
+            the tag cache, :meth:`.refresh_tag_cache`. The tag cache is stored in :attr:`.tag_cache`, Using this
+            property, it is possible to iterate over the tag list and preform a simple name matching search to find
+            the tag(s) that you want. An example implementation of a tag search method is provided as such:
+
+            .. code-block:: python
+
+                from asyncdex import MangadexClient, Tag
+                from typing import List
+
+                def search_tags(client: MangadexClient, phrase: str) -> List[Tag]:
+                    phrase = phrase.replace(" ", "") # Remove spaces so "sliceoflife" and "slice of life" match.
+                    results: List[Tag] = []
+                    for tag in client.tag_cache:
+                        for name in tag.names.values():
+                            if phrase in name.replace(" ", "").lower():
+                                results.append(tag)
+                                break
+                    return results
 
         :param id: The tag's UUID.
         :type id: str
@@ -431,6 +473,90 @@ class MangadexClient:
         finally:
             r.close()
 
+    def get_author(self, id: str) -> Author:
+        """Get an author using it's ID.
+
+        .. versionadded:: 0.2
+
+        .. note::
+            This method can also be used to get artists, since they are the same class.
+
+        .. warning::
+            This method returns a **lazy** Author instance. Call :meth:`.Author.fetch` on the returned object to see
+            any values.
+
+        :param id: The author's UUID.
+        :type id: str
+        :return: A :class:`.Author` object.
+        :rtype: Author
+        """
+        return Author(self, id=id)
+
+    def get_chapter(self, id: str) -> Chapter:
+        """Get a chapter using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. seealso:: :meth:`.ChapterList.get`.
+
+        .. warning::
+            This method returns a **lazy** Chapter instance. Call :meth:`.Chapter.fetch` on the returned object to see
+            any values.
+
+        :param id: The chapter's UUID.
+        :type id: str
+        :return: A :class:`.Chapter` object.
+        :rtype: Chapter
+        """
+        return Chapter(self, id=id)
+
+    def get_user(self, id: str) -> User:
+        """Get a user using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. warning::
+            This method returns a **lazy** User instance. Call :meth:`.User.fetch` on the returned object to see
+            any values.
+
+        :param id: The user's UUID.
+        :type id: str
+        :return: A :class:`.User` object.
+        :rtype: User
+        """
+        return User(self, id=id)
+
+    async def logged_in_user(self) -> User:
+        """Get the user that is currently logged in.
+
+        .. versionadded:: 0.3
+
+        :return: A :class:`.User` object.
+        :rtype: User
+        """
+        r = await self.request("GET", routes["logged_in_user"])
+        json = await r.json()
+        r.close()
+        return User(self, data=json)
+
+    def get_group(self, id: str) -> Group:
+        """Get a group using it's ID.
+
+        .. versionadded:: 0.3
+
+        .. warning::
+            This method returns a **lazy** Group instance. Call :meth:`.Group.fetch` on the returned object to see
+            any values.
+
+        :param id: The group's UUID.
+        :type id: str
+        :return: A :class:`.Group` object.
+        :rtype: Group
+        """
+        return Group(self, id=id)
+
+    # Batch models
+
     async def _do_batch(self, items: Tuple[Model, ...], route_name: str):
         uuid_map: Dict[str, List[Model]] = {}
         for item in items:
@@ -464,25 +590,6 @@ class MangadexClient:
         """
         await self._do_batch(authors, "author_list")
 
-    def get_author(self, id: str) -> Author:
-        """Get an author using it's ID.
-
-        .. versionadded:: 0.2
-
-        .. note::
-            This method can also be used to get artists, since they are the same class.
-
-        .. warning::
-            This method returns a **lazy** Author instance. Call :meth:`.Author.fetch` on the returned object to see
-            any values.
-
-        :param id: The author's UUID.
-        :type id: str
-        :return: A :class:`.Author` object.
-        :rtype: Author
-        """
-        return Author(self, id=id)
-
     async def batch_mangas(self, *mangas: Manga):
         """Updates a lot of mangas at once, reducing the time needed to update tens or hundreds of mangas.
 
@@ -492,24 +599,6 @@ class MangadexClient:
         :type mangas: Tuple[Manga, ...]
         """
         await self._do_batch(mangas, "search")
-
-    def get_chapter(self, id: str) -> Chapter:
-        """Get a chapter using it's ID.
-
-        .. versionadded:: 0.3
-
-        .. seealso:: :meth:`.ChapterList.get`.
-
-        .. warning::
-            This method returns a **lazy** Chapter instance. Call :meth:`.Chapter.fetch` on the returned object to see
-            any values.
-
-        :param id: The chapter's UUID.
-        :type id: str
-        :return: A :class:`.Chapter` object.
-        :rtype: Chapter
-        """
-        return Chapter(self, id=id)
 
     async def batch_chapters(self, *chapters: Chapter):
         """Updates a lot of chapters at once, reducing the time needed to update tens or hundreds of chapters.
@@ -523,34 +612,315 @@ class MangadexClient:
         """
         await self._do_batch(chapters, "chapter_list")
 
-    def get_user(self, id: str) -> User:
-        """Get a user using it's ID.
+    async def batch_groups(self, *groups: Group):
+        """Updates a lot of groups at once, reducing the time needed to update tens or hundreds of groups.
 
         .. versionadded:: 0.3
 
-        .. warning::
-            This method returns a **lazy** User instance. Call :meth:`.User.fetch` on the returned object to see
-            any values.
-
-        :param id: The user's UUID.
-        :type id: str
-        :return: A :class:`.User` object.
-        :rtype: User
+        :param groups: A tuple of all the groups to update.
+        :type groups: Tuple[Group, ...]
         """
-        return User(self, id=id)
+        await self._do_batch(groups, "group_list")
 
-    async def logged_in_user(self) -> User:
-        """Get the user that is currently logged in.
+    # Get lists
 
-        .. versionadded:: 0.3
+    @staticmethod
+    def _add_order(
+        params: Dict[str, Any],
+        order: Optional[Union[GroupListOrder, AuthorListOrder, ChapterListOrder, MangaListOrder]],
+    ):
+        if order:
+            params["order"] = {k: v.value for k, v in asdict(order) if v}
 
-        :return: A :class:`.User` object.
-        :rtype: User
+    def get_groups(
+        self, *, name: Optional[str] = None, order: Optional[GroupListOrder] = None, limit: Optional[int] = None
+    ) -> Pager[Group]:
+        """Creates a :class:`.Pager` for groups.
+
+        .. versionadded:: 0.4
+
+        Usage:
+
+        .. code-block:: python
+
+            async for group in client.get_groups(name="Group Name"):
+                ...
+
+        :param name: The name to search for.
+        :type name: str
+        :param order: The order to sort the groups [#V506_CHANGELOG]_.
+        :type order: GroupListOrder
+        :param limit: Only return up to this many groups.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :return: A Pager for the groups.
+        :rtype: Pager
         """
-        r = await self.request("GET", routes["logged_in_user"])
-        json = await r.json()
-        r.close()
-        return User(self, data=json)
+        params = {}
+        if name:
+            params["name"] = name.replace(" ", "+")
+        self._add_order(params, order)
+        return Pager(routes["group_list"], Group, self, params=params, limit=limit)
+
+    def get_chapters(
+        self,
+        *,
+        title: Optional[str] = None,
+        groups: Optional[Sequence[Union[str, Group]]] = None,
+        uploader: Optional[Union[str, User]] = None,
+        manga: Optional[Union[str, Manga]] = None,
+        volume: Optional[str] = None,
+        chapter_number: Optional[str] = None,
+        language: Optional[str] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+        order: Optional[ChapterListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> Pager[Chapter]:
+        """Gets a :class:`.Pager` of chapters.
+
+        .. versionadded:: 0.4
+
+        Usage:
+
+        .. code-block:: python
+
+            async for chapter in client.get_chapters(chapter_number="1"):
+                ...
+
+        :param title: The title of the chapter.
+        :type title: str
+        :param groups: Chapters made by one of the groups in the given list. A group can either be the UUID of the
+            group in string format or an instance of :class:`.Group`.
+        :type groups: List[Union[str, Group]]
+        :param uploader: The user who uploaded the chapter. A user can either be the UUID of the user in string
+            format or an instance of :class:`.User`.
+        :type uploader: Union[str, User]
+        :param manga: Chapters that belong to the given manga. A manga can either be the UUID of the manga in string
+            format or an instance of :class:`.Manga`.
+
+            .. note::
+                If fetching all chapters for one manga, it is more efficient to use :meth:`.ChapterList.get` instead.
+
+        :type manga: Union[str, Manga]
+        :param volume: The volume that the chapter belongs to.
+        :type volume: str
+        :param chapter_number: The number of the chapter.
+        :type chapter_number: str
+        :param language: The language of the chapter.
+        :type language: str
+        :param created_after: Get chapters created after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type created_after: datetime
+        :param updated_after: Get chapters updated after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type updated_after: datetime
+        :param published_after: Get chapters published after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type published_after: datetime
+        :param order: The order to sort the chapters.
+        :type order: ChapterListOrder
+        :param limit: Only return up to this many chapters.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :return: A Pager for the chapters.
+        :rtype: Pager
+        """
+        params = {}
+        if title:
+            params["title"] = title.replace(" ", "+")
+        if groups:
+            params["groups"] = [str(item) for item in groups]
+        if uploader:
+            params["uploader"] = str(uploader)
+        if manga:
+            params["manga"] = str(manga)
+        if volume:
+            params["volume"] = volume
+        if chapter_number:
+            params["chapter"] = chapter_number
+        if language:
+            params["translatedLanguage"] = language
+        if created_after:
+            params["createdAtSince"] = return_date_string(created_after)
+        if updated_after:
+            params["updatedAtSince"] = return_date_string(updated_after)
+        if published_after:
+            params["publishAtSince"] = return_date_string(published_after)
+        self._add_order(params, order)
+        return Pager(routes["chapter_list"], Chapter, self, params=params, limit=limit)
+
+    def get_authors(
+        self, *, name: Optional[str] = None, order: Optional[AuthorListOrder] = None, limit: Optional[int] = None
+    ) -> Pager[Author]:
+        """Creates a :class:`.Pager` for authors.
+
+        .. versionadded:: 0.4
+
+        Usage:
+
+        .. code-block:: python
+
+            async for author in client.get_authors(name="Author Name"):
+                ...
+
+        :param name: The name to search for.
+        :type name: str
+        :param order: The order to sort the authors [#V506_CHANGELOG]_.
+        :type order: AuthorListOrder
+        :param limit: Only return up to this many authors.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :return: A Pager for the authors.
+        :rtype: Pager
+        """
+        params = {}
+        if name:
+            params["name"] = name.replace(" ", "+")
+        self._add_order(params, order)
+        return Pager(routes["author_list"], Author, self, params=params, limit=limit)
+
+    def get_mangas(
+        self,
+        *,
+        title: Optional[str] = None,
+        authors: Optional[List[Union[str, Author]]] = None,
+        artists: Optional[List[Union[str, Author]]] = None,
+        year: Optional[int] = None,
+        included_tags: Optional[List[Union[str, Tag]]] = None,
+        included_tag_mode: TagMode = TagMode.AND,
+        excluded_tags: Optional[List[Union[str, Tag]]] = None,
+        excluded_tag_mode: TagMode = TagMode.OR,
+        status: Optional[List[MangaStatus]] = None,
+        languages: Optional[List[str]] = None,
+        demographic: Optional[List[Demographic]] = None,
+        rating: Optional[List[ContentRating]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        order: Optional[MangaListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> Pager[Manga]:
+        """Gets a :class:`.Pager` of mangas.
+
+        .. versionadded:: 0.4
+
+        Usage:
+
+        .. code-block:: python
+
+            async for manga in client.search(title="Solo Leveling"):
+                ...
+
+        :param title: The title of the manga.
+        :type title: str
+        :param authors: Mangas made by the given authors. An author may be represented by a string containing their UUID
+            or an instance of :class:`.Author`.
+        :type authors: List[Union[str, Author]]
+        :param artists: Mangas made by the given artists. An artist may be represented by a string containing their UUID
+            or an instance of :class:`.Author`.
+        :type artists: List[Union[str, Author]]
+        :param year: The year the manga was published.
+        :type year: int
+        :param included_tags: A list of tags that should be present. A tag may be represented by a string containing
+            the tag's UUID or an instance of :class:`.Tag`.
+        :type included_tags: List[Union[str, Tag]]
+        :param included_tag_mode: The mode to use for the included tags. Defaults to :attr:`.TagMode.AND`.
+        :type included_tag_mode: TagMode
+        :param excluded_tags: A list of tags that should not be present. A tag may be represented by a string containing
+            the tag's UUID or an instance of :class:`.Tag`.
+        :type excluded_tags: List[Union[str, Tag]]
+        :param excluded_tag_mode: The mode to use for the excluded tags. Defaults to :attr:`.TagMode.OR`.
+        :type excluded_tag_mode: TagMode
+        :param status: A list of :class:`.MangaStatus`\ es representing possible statuses.
+        :type status: List[MangaStatus]
+        :param languages: A list of language coes.
+        :type languages: List[str]
+        :param demographic: A list of :class:`.Demographic`\ s representing possible demographics.
+        :type demographic: List[Demographic]
+        :param rating: A list of :class:`.ContentRating`\ s representing possible content ratings.
+        :param created_after: Get mangas created after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type created_after: datetime
+        :param updated_after: Get mangas updated after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type updated_after: datetime
+        :param limit: Only return up to this many mangas.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :param order: The order to sort the mangas.
+        :type order: MangaListOrder
+        :type limit: int
+        :return: A Pager with the manga entries.
+        :rtype: Pager
+        """
+        params = {"includedTagsMode": included_tag_mode.value, "excludedTagsMode": excluded_tag_mode.value}
+        if title:
+            params["title"] = title.replace(" ", "+")
+        if authors:
+            params["authors"] = [str(item) for item in authors]
+        if artists:
+            params["artists"] = [str(item) for item in artists]
+        if year:
+            params["year"] = year
+        if included_tags:
+            params["includedTags"] = [str(item) for item in included_tags]
+        if excluded_tags:
+            params["excludedTags"] = [str(item) for item in excluded_tags]
+        if status:
+            params["status"] = [item.value for item in status]
+        if languages:
+            params["originalLanguage"] = languages
+        if demographic:
+            params["publicationDemographic"] = [item.value for item in demographic]
+        if rating:
+            params["contentRating"] = [item.value for item in rating]
+        if created_after:
+            params["createdAtSince"] = return_date_string(created_after)
+        if updated_after:
+            params["updatedAtSince"] = return_date_string(updated_after)
+        self._add_order(params, order)
+        return Pager(routes["search"], Manga, self, params=params, limit=limit)
+
+    search = get_mangas
+    """Alias for :meth:`.get_mangas`."""
+
+    # Misc methods
 
     async def ping(self):
         """Ping the server. This will throw an error if there is any error in making connections, whether with the
@@ -605,28 +975,70 @@ class MangadexClient:
             conversion_map[attribs["legacyId"]] = model(self, id=attribs["newId"])
         return conversion_map
 
-    def get_group(self, id: str) -> Group:
-        """Get a group using it's ID.
+    async def report_page(self, url: str, success: bool, response_length: int, duration: int, cached: bool):
+        """Report a page to the MangaDex@Home network.
 
-        .. versionadded:: 0.3
+        .. versionadded:: 0.4
 
-        .. warning::
-            This method returns a **lazy** Group instance. Call :meth:`.Group.fetch` on the returned object to see
-            any values.
+        .. seealso:: :meth:`.Client.get_page`, which will automatically call this method for you.
 
-        :param id: The group's UUID.
-        :type id: str
-        :return: A :class:`.Group` object.
-        :rtype: Group
+        :param url: The URL of the image.
+        :type url: str
+        :param success: Whether or not the URL was successfully retrieved.
+        :type success: bool
+        :param response_length: The length of the response, whether or not it was a success.
+        :type response_length: int
+        :param duration: The time it took for the request, including downloading the content if it existed,
+            **in milliseconds**.
+        :type duration: int
+        :param cached: Whether or not the request was cached (The ``X-Cache`` header starting with the value ``HIT``).
+        :type cached: bool
         """
-        return Group(self, id=id)
+        await self.request(
+            "POST",
+            routes["report_page"],
+            json={
+                "url": url,
+                "success": success,
+                "bytes": response_length,
+                "duration": duration,
+                "cached": cached,
+            },
+        )
 
-    async def batch_groups(self, *groups: Group):
-        """Updates a lot of groups at once, reducing the time needed to update tens or hundreds of groups.
+    async def get_page(self, url: str) -> aiohttp.ClientResponse:
+        """A method to download one page of a chapter, using the URLs from :meth:`.pages`. This method is more
+        low-level so that it is not necessary to download all pages at once. This method also respects the API rules
+        on downloading pages.
 
-        .. versionadded:: 0.3
-
-        :param groups: A tuple of all the groups to update.
-        :type groups: Tuple[Group, ...]
+        :param url: The URL to download.
+        :type url: str
+        :raises: :class:`aiohttp.ClientResponseError` if a 4xx or 5xx response code is returned.
+        :return: The :class:`aiohttp.ClientResponse` object containing the image.
+        :rtype: aiohttp.ClientResponse
         """
-        await self._do_batch(groups, "group_list")
+        start = datetime.utcnow()
+        try:
+            r = await self.request("GET", url)
+            content_length = len(await r.read())
+        except Exception:
+            success = False
+            content_length = 0
+            cached = False
+            raise
+        else:
+            success = r.ok and "image" in r.headers.get("Content-Type", "")
+            cached = r.headers.get("X-Cache", "").lower().startswith("hit")
+            r.raise_for_status()
+            return r
+        finally:
+            finish = datetime.utcnow()
+            time_difference = int((finish - start).total_seconds() * 1000)
+            asyncio.create_task(self.report_page(url, success, content_length, time_difference, cached))  # NOQA
+
+    async def close(self):
+        """Close the client.
+
+        .. versionadded:: 0.4
+        """
+        await self.__aexit__(None, None, None)

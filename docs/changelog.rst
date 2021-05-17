@@ -1,6 +1,49 @@
 Changelog
 #########
 
+v0.4
+----
+
+Added
++++++
+* :func:`.return_date_string`
+* :meth:`.download_all`
+* :attr:`.Pager.limit` to limit total responses,
+* :meth:`.Pager.as_list`
+* :attr:`.Tag.descriptions`
+* :attr:`.Tag.group`
+* :class:`.TagDict`
+* Allow the creation of :class:`.User` objects if the ID is in the base data dictionary.
+* :attr:`.Demographic.NONE`
+* :class:`.OrderDirection`
+* :class:`.TagMode`
+* :class:`.AuthorListOrder`
+* :class:`.ChapterListOrder`
+* :class:`.GroupListOrder`
+* :class:`.MangaListOrder`
+* Methods added to :class:`.MangadexClient`:
+    * :meth:`.get_groups`
+    * :meth:`.get_chapters`
+    * :meth:`.get_authors`
+    * :meth:`.get_mangas`
+    * :meth:`.report_page`
+    * :meth:`.MangadexClient.close`
+
+Changed
++++++++
+
+* Changed :meth:`.download_chapter` so that directories are not created until all pages are retrieved.
+* Moved :meth:`.Chapter.get_page` to :meth:`.MangadexClient.get_page`.
+
+Fixed
++++++
+
+* Fixed :meth:`.Pager.__anext__` so it does not need to complete all requests before returning the first batch of statements. This will drastically improve performance if all items aren't needed immediately (such as making further requests with returned data).
+* Fixed a bug where the chapter list would clear itself when filtered.
+* Fixed a bug where :meth:`.download_chapter` would not try again due to certain errors such as establishing a connection.
+* Fixed :meth:`.Chapter.pages` so it respects the ``forcePort443`` parameter.
+
+
 v0.3
 ----
 

@@ -1,13 +1,13 @@
 import asyncio
 import re
+import warnings
 from collections import defaultdict
 from datetime import datetime
 from os import makedirs
 from os.path import exists, join
 from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple
 
-import aiohttp
-from aiohttp import ClientResponseError
+from aiohttp import ClientError
 from natsort import natsort_keygen
 
 from .abc import Model
@@ -17,7 +17,7 @@ from .pager import Pager
 from .user import User
 from ..constants import invalid_folder_name_regex, routes
 from ..enum import DuplicateResolutionAlgorithm
-from ..utils import InclusionExclusionPair, Interval, copy_key_to_attribute
+from ..utils import InclusionExclusionPair, Interval, copy_key_to_attribute, return_date_string
 
 if TYPE_CHECKING:
     from .manga import Manga
@@ -136,7 +136,9 @@ class Chapter(Model, DatetimeMixin):
         """
         if not hasattr(self, "page_names"):
             await self.fetch()
-        r = await self.client.request("GET", routes["mdah"].format(chapterId=self.id), params={"ssl": ssl_only})
+        r = await self.client.request(
+            "GET", routes["md@h"].format(chapterId=self.id), params={"forcePort443": ssl_only}
+        )
         base_url = (await r.json())["baseUrl"]
         r.close()
         return [
@@ -144,36 +146,17 @@ class Chapter(Model, DatetimeMixin):
             for filename in (self.data_saver_page_names if data_saver else self.page_names)
         ]
 
-    async def get_page(self, url: str) -> aiohttp.ClientResponse:
-        """A method to download one page of a chapter, using the URLs from :meth:`.pages`. This method is more
-        low-level so that it is not necessary to download all pages at once. This method also respects the API rules
-        on downloading pages.
+    async def get_page(self, url: str):
+        """Alias for :meth:`.MangadexClient.get_page`.
 
-        :param url: The URL to download.
-        :type url: str
-        :raises: :class:`aiohttp.ClientResponseError` if a 4xx or 5xx response code is returned.
-        :return: The :class:`aiohttp.ClientResponse` object containing the image.
-        :rtype: aiohttp.ClientResponse
+        .. deprecated:: 0.4
         """
-        start = datetime.utcnow()
-        r = await self.client.request("GET", url)
-        content_length = len(await r.read())
-        finish = datetime.utcnow()
-        asyncio.create_task(
-            self.client._one_off(
-                "POST",
-                routes["report_page"],
-                json={
-                    "url": url,
-                    "success": r.ok,
-                    "bytes": content_length,
-                    "duration": ((finish - start).total_seconds() * 1000),
-                    "cached": r.headers.get("X-Cache", "").lower().startswith("hit"),
-                },
-            )
+        warnings.warn(
+            "Chapter.get_page() is deprecated, use MangadexClient.get_page() instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
         )
-        r.raise_for_status()
-        return r
+        return await self.client.get_page(url)
 
     async def download_chapter(
         self,
@@ -241,25 +224,10 @@ class Chapter(Model, DatetimeMixin):
         """
         if not hasattr(self, "page_names"):
             await self.fetch()
-        base = ""
-        if not as_bytes_list:
-            chapter_num = self.number or ""
-            separator = " - " if self.number and self.title else ""
-            title = re.sub("_{2,}", "_", invalid_folder_name_regex.sub("_", self.title.strip())) if self.title else ""
-            # This replaces invalid characters with underscores then deletes duplicate underscores in a series. This
-            # means that a name of ``ex___ample`` becomes ``ex_ample``.
-            if not self.manga.titles:
-                await self.manga.fetch()
-            manga_title = self.manga.titles[self.language].primary or (
-                self.manga.titles.first().primary if self.manga.titles else self.manga.id
-            )
-            manga_title = re.sub("_{2,}", "_", invalid_folder_name_regex.sub("_", manga_title.strip()))
-            base = folder_format.format(manga=manga_title, chapter_num=chapter_num, separator=separator, title=title)
-            makedirs(base, exist_ok=True)
         pages = await self.pages(data_saver=use_data_saver, ssl_only=ssl_only)
         try:
             items = await asyncio.gather(*[self.get_page(url) for url in pages])
-        except ClientResponseError:
+        except ClientError:
             if retries > 0:
                 return await self.download_chapter(
                     folder_format=folder_format,
@@ -277,6 +245,28 @@ class Chapter(Model, DatetimeMixin):
                 return byte_list  # NOQA: ignore; This is needed because for whatever reason PyCharm cannot guess the
                 # output of asyncio.gather()
             else:
+                base = ""
+                if not as_bytes_list:
+                    chapter_num = self.number or ""
+                    separator = " - " if self.number and self.title else ""
+                    title = (
+                        re.sub("_{2,}", "_", invalid_folder_name_regex.sub("_", self.title.strip()))
+                        if self.title
+                        else ""
+                    )
+                    # This replaces invalid characters with underscores then deletes duplicate underscores in a
+                    # series. This
+                    # means that a name of ``ex___ample`` becomes ``ex_ample``.
+                    if not self.manga.titles:
+                        await self.manga.fetch()
+                    manga_title = self.manga.titles[self.language].primary or (
+                        self.manga.titles.first().primary if self.manga.titles else self.manga.id
+                    )
+                    manga_title = re.sub("_{2,}", "_", invalid_folder_name_regex.sub("_", manga_title.strip()))
+                    base = folder_format.format(
+                        manga=manga_title, chapter_num=chapter_num, separator=separator, title=title
+                    )
+                    makedirs(base, exist_ok=True)
                 for original_file_name, (num, item) in zip(
                     self.data_saver_page_names if use_data_saver else self.page_names, enumerate(byte_list, start=1)
                 ):
@@ -464,10 +454,6 @@ class ChapterList(List[Chapter]):
         super().__init__(entries or [])
         self.manga = manga
 
-    @staticmethod
-    def _return_date_string(datetime_obj: datetime):
-        return datetime_obj.strftime("%Y-%m-%dT%H:%M:%S")
-
     async def get(
         self,
         *,
@@ -506,11 +492,11 @@ class ChapterList(List[Chapter]):
         if locales:
             params["locales"] = locales
         if created_after:
-            params["created_after"] = self._return_date_string(created_after)
+            params["createdAtSince"] = return_date_string(created_after)
         if updated_after:
-            params["updated_after"] = self._return_date_string(updated_after)
+            params["updatedAtSince"] = return_date_string(updated_after)
         if published_after:
-            params["published_after"] = self._return_date_string(published_after)
+            params["publishAtSince"] = return_date_string(published_after)
         async for item in Pager(
             routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client, params=params, limit_size=500
         ):
@@ -712,7 +698,7 @@ class ChapterList(List[Chapter]):
 
         :rtype: ChapterList
         """
-        base: Iterable[Chapter] = self
+        base: Iterable[Chapter] = self.copy()
         options = (
             locales,
             creation_time,
@@ -781,3 +767,95 @@ class ChapterList(List[Chapter]):
         :type reverse: bool
         """
         super().sort(key=key or natsort_keygen(key=lambda chapter: chapter.name), reverse=reverse)
+
+    async def download_all(
+        self,
+        *,
+        skip_bad: bool = True,
+        folder_format: str = "{manga}/{chapter_num}{separator}{title}",
+        file_format: str = "{num}",
+        as_bytes_list: bool = False,
+        overwrite: bool = True,
+        retries: int = 3,
+        use_data_saver: bool = False,
+        ssl_only: bool = False,
+    ) -> Dict[Chapter, Optional[List[str]]]:
+        """Download all chapters in the list.
+
+        .. versionadded:: 0.4
+
+        :param skip_bad: Whether or not to skip bad chapters. Defaults to True.
+        :type skip_bad: bool
+        :param folder_format: The format of the folder to create for the chapter. The folder can already be existing.
+            The default format is ``{manga}/{chapter_num}{separator}{chapter_title}``.
+
+            .. note::
+                Specify ``.`` if you want to save the pages in the current folder.
+
+            Available variables:
+
+            * ``{manga}``: The name of the manga. If the chapter's manga object does not contain a title object,
+              it will be fetched.
+            * ``{chapter_num}``: The number of the chapter, if it exists.
+            * ``{separator}``: A separator if both the chapter's number and title exists.
+            * ``{title}``: The title of the chapter, if it exists.
+
+        :type folder_format: str
+        :param file_format: The format of the individual image file names. The default format is ``{num}``.
+
+            .. note::
+                The file extension is applied automatically from the real file name. There is no need to include it.
+
+            Available variables:
+
+            * ``{num}``: The numbering of the image files starting from 1. This respects the order the images are in
+              inside of :attr:`.page_names`.
+            * ``{num0}``: The same as ``{num}`` but starting from 0.
+            * ``{name}``: The actual filename of the image from :attr:`.page_names`, without the file extension.
+
+        :type file_format: str
+        :param as_bytes_list: Whether or not to return the pages as a list of raw bytes. Setting this parameter to
+            ``True`` will ignore the value of the ``folder_format`` parameter.
+        :type as_bytes_list: bool
+        :param overwrite: Whether or not to override existing files with the same name as the page. Defaults to
+            ``True``.
+        :type overwrite: bool
+        :param retries: How many times to retry a chapter if a MD@H node does not let us download the pages.
+            Defaults to ``3``.
+        :type retries: int
+        :param use_data_saver: Whether or not to use the data saver pages or the normal pages. Defaults to ``False``.
+        :type use_data_saver: bool
+        :param ssl_only: Whether or not the given URL has port ``443``. Useful if your firewall blocks outbound
+            connections to ports that are not port ``443``. Defaults to ``False``.
+
+            .. note::
+                This will lower the pool of available clients and can cause higher download times.
+
+        :type ssl_only: bool
+        :raises: :class:`aiohttp.ClientResponseError` if there is an error after all retries are exhausted.
+        :return: A dictionary mapping consisting of :class:`.Chapter` objects as keys and the data from that chapter's
+            :meth:`.download_chapter` method. If ``skip_bad`` is True, chapters with exceptions will have ``None``
+            instead of a list of bytes.
+        :rtype: List[Optional[List[bytes]]]
+        """
+        tasks = [
+            asyncio.create_task(
+                item.download_chapter(
+                    folder_format=folder_format,
+                    file_format=file_format,
+                    as_bytes_list=as_bytes_list,
+                    overwrite=overwrite,
+                    retries=retries,
+                    use_data_saver=use_data_saver,
+                    ssl_only=ssl_only,
+                )
+            )
+            for item in self
+        ]
+        data = await asyncio.gather(*tasks, return_exceptions=skip_bad)
+        return_mapping = {}
+        for num, item in enumerate(data):
+            if isinstance(item, BaseException):
+                item = None
+            return_mapping[self[num]] = item
+        return return_mapping

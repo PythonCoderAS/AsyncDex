@@ -105,7 +105,7 @@ routes: Dict[str, str] = {
     "logout": "/auth/logout",
     "manga": "/manga/{id}",
     "manga_chapters": "/manga/{id}/feed",
-    "mdah": "/at-home/server/{chapterId}",  # MD@H (MangaDex at Home)
+    "md@h": "/at-home/server/{chapterId}",  # MD@H (MangaDex at Home)
     "ping": "/ping",
     "random_manga": "/manga/random",
     "report_page": "https://api.mangadex.network/report",
@@ -115,4 +115,8 @@ routes: Dict[str, str] = {
     "user": "/user/{id}",
 }
 """The various predefined routes for the client. If the API changes for a given destination, the route can easily
-be modified without copy-pasting the route to the functions using it."""
+be modified without copy-pasting the route to the functions using it.
+
+.. versionchanged:: 0.4
+    ``mdah`` renamed to ``md@h``.
+"""
