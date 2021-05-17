@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from os import makedirs
 from os.path import exists, join
-from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple, Union
 
 from aiohttp import ClientError
 from natsort import natsort_keygen
@@ -22,6 +22,7 @@ from ..utils import InclusionExclusionPair, Interval, copy_key_to_attribute, ret
 
 if TYPE_CHECKING:
     from .manga import Manga
+    from ..client import MangadexClient
 
 
 class Chapter(Model, DatetimeMixin):
@@ -82,6 +83,14 @@ class Chapter(Model, DatetimeMixin):
 
     groups: List[Group]
     """The groups that uploaded this chapter."""
+
+    read: bool
+    """Whether or not the chapter is read."""
+
+    def __init__(self, client: "MangadexClient", *, id: Optional[str] = None, version: int = 0,
+                 data: Optional[Dict[str, Any]] = None):
+        self.read = False
+        super().__init__(client, id=id, version=version, data=data)
 
     @property
     def name(self) -> str:
@@ -341,6 +350,58 @@ class Chapter(Model, DatetimeMixin):
             await client.batch_groups(*user.groups)
         """
         await self.client.batch_groups(*self.groups)
+
+    async def mark_read(self):
+        """Mark the chapter as read. Requires authentication.
+
+        .. versionadded:: 0.5
+
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        self.client.raise_exception_if_not_authenticated(routes["read"])
+        r = await self.client.request("POST", routes["read"].format(id=self.id))
+        r.raise_for_status()
+        r.close()
+
+    async def mark_unread(self):
+        """Mark the chapter as unread. Requires authentication.
+
+        .. versionadded:: 0.5
+
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        self.client.raise_exception_if_not_authenticated(routes["read"])
+        r = await self.client.request("DEL", routes["read"].format(id=self.id))
+        r.raise_for_status()
+        r.close()
+
+    async def toggle_read(self):
+        """Toggle a chapter between being read and unread. Requires authentication.
+
+        .. versionadded:: 0.5
+
+        .. note::
+            This requires the read status of the chapter to be known. See :meth:`.get_read_status` or
+            :meth:`.ChapterList.get_read`.
+
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        if self.read:
+            await self.mark_unread()
+        else:
+            await self.mark_read()
+
+    async def get_read(self):
+        """Gets whether or not the chapter is read. The read status can then be viewed in :attr:`.read`.
+
+        .. versionadded:: 0.5
+        """
+        r = await self.client.request("GET", routes["manga_read"].format(id=self.manga.id))
+        self.manga._check_404(r)
+        r.raise_for_status()
+        json = await r.json()
+        r.close()
+        self.read = self.id in json["data"]
 
 
 def _chapter_attr_map(items: List[Chapter], attr: str):
@@ -864,6 +925,8 @@ class ChapterList(List[Chapter]):
     def group_by_volumes(self) -> Dict[Optional[str], List[Chapter]]:
         """Creates a dictionary mapping volume numbers to chapters.
 
+        .. versionadded:: 0.5
+
         :return: A dictionary where the keys are volume numbers and the values are a list of :class:`.Chapter` objects.
         :rtype: Dict[Optional[str], List[Chapter]]
         """
@@ -875,6 +938,8 @@ class ChapterList(List[Chapter]):
     def group_by_numbers(self) -> Dict[Optional[str], List[Chapter]]:
         """Creates a dictionary mapping chapter numbers to chapters.
 
+        .. versionadded:: 0.5
+
         :return: A dictionary where the keys are chapter numbers and the values are a list of :class:`.Chapter` objects.
         :rtype: Dict[Optional[str], List[Chapter]]
         """
@@ -885,6 +950,8 @@ class ChapterList(List[Chapter]):
 
     def group_by_volume_and_chapters(self) -> Dict[Tuple[Optional[str], Optional[str]], List[Chapter]]:
         """Creates a dictionary mapping volume numbers and chapter numbers to chapters.
+
+        .. versionadded:: 0.5
 
         :return: A dictionary where the keys are a tuple of volume and chapter numbers and the values are a list of
             :class:`.Chapter` objects.
@@ -898,6 +965,8 @@ class ChapterList(List[Chapter]):
     def calculate_aggregate(self) -> MangaAggregate:
         """Calculates an aggregate of the chapters contained.
 
+        .. versionadded:: 0.5
+
         :return: The aggregate of the chapters.
         :rtype: MangaAggregate
         """
@@ -910,7 +979,37 @@ class ChapterList(List[Chapter]):
     def locales(self) -> List[str]:
         """Get the list of locales that exist in the chapter list.
 
+        .. versionadded:: 0.5
+
         :return: A list of locales.
         :rtype: List[str]
         """
         return list({item.language for item in self})
+
+    def id_to_chapter(self) -> Dict[str, Chapter]:
+        """Generates a mapping of chapter UUID to chapter object.
+
+        .. versionadded:: 0.5
+
+        :return: A dictionary where the keys are UUIDs and the values are :class:`.Chapter` objects.
+        :rtype: Dict[str, Chapter]
+        """
+        return {item.id: item for item in self}
+
+    def _update_read_data(self, data: Dict[str, Union[str, List[str]]]):
+        id_mapping = self.id_to_chapter()
+        for id in data["data"]:
+            if id in id_mapping:
+                id_mapping[id].read = True
+
+    async def get_read(self):
+        """Gets the list of chapters which are read. Chapters whose IDs are found in this list will be set as read.
+
+        .. versionadded:: 0.5
+        """
+        r = await self.manga.client.request("GET", routes["manga_read"].format(id=self.manga.id))
+        self.manga._check_404(r)
+        r.raise_for_status()
+        json = await r.json()
+        r.close()
+        self._update_read_data(json)

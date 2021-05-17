@@ -305,6 +305,20 @@ class MangadexClient:
 
     # Authentication
 
+    def raise_exception_if_not_authenticated(self, path: str):
+        """Raise an exception if authentication is missing. This is ideally used before making requests that will
+        always need authentication.
+
+        .. versionadded:: 0.5
+
+        :param path: The path to display.
+            .. seealso:: :attr:`.Unauthorized.path`.
+        :type path: str
+        :raises: :class:`.Unauthorized`
+        """
+        if self.anonymous_mode:
+            raise Unauthorized(path)
+
     @property
     def session_token(self) -> Optional[str]:
         """The session token tht the client has obtained. This will be None when the client is operating in anonymous
@@ -621,6 +635,28 @@ class MangadexClient:
         :type groups: Tuple[Group, ...]
         """
         await self._do_batch(groups, "group_list")
+
+    async def batch_manga_read(self, *mangas: Manga):
+        """Find the read status for multiple mangas.
+
+        .. versionadded:: 0.5
+
+        :param mangas: A tuple of manga objects.
+        :type mangas: Tuple[Manga, ...]
+        """
+        # We can't use _do_batch here unfortunately.
+        final_data = []
+        manga_list = list({manga.id for manga in mangas})
+        while manga_list:
+            batch = manga_list[:100]
+            manga_list = manga_list[100:]
+            r = await self.request("GET", routes["batch_manga_read"], params={"ids": batch})
+            r.raise_for_status()
+            json = await r.json()
+            r.close()
+            final_data.extend(json["data"])
+        for item in mangas:
+            item.chapters._update_read_data({"data": final_data})
 
     # Get lists
 

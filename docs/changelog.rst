@@ -16,6 +16,13 @@ Added
 * :meth:`.calculate_aggregate`
 * :meth:`.locales`
 * :meth:`.aggregate`
+* :meth:`.mark_read`
+* :meth:`.mark_unread`
+* :meth:`.toggle_read`
+* :meth:`.Chapter.get_read`
+* :meth:`.ChapterList.get_read`
+* :meth:`.id_to_chapter`
+* :meth:`.batch_manga_read`
 
 Fixed
 +++++
