@@ -19,6 +19,7 @@ from .pager import Pager
 from .user import User
 from ..constants import invalid_folder_name_regex, routes
 from ..enum import DuplicateResolutionAlgorithm
+from ..list_orders import MangaFeedListOrder
 from ..utils import InclusionExclusionPair, Interval, copy_key_to_attribute, return_date_string
 
 if TYPE_CHECKING:
@@ -527,14 +528,25 @@ class ChapterList(List[Chapter]):
         self,
         *,
         locales: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
         published_after: Optional[datetime] = None,
+            order: Optional[MangaFeedListOrder] = None,
+            limit: Optional[int] = None,
     ):
         """Gets the list of chapters.
 
-        :param locales: The locales to filter by.
+        .. versionchanged:: 0.5
+            * Parameter ``locales`` was renamed to ``languages``
+
+        .. deprecated:: 0.5
+            Parameter ``locales``
+
+        :param locales: An alias for the ``languages`` parameter.
         :type locales: List[str]
+        :param languages: The languages to filter by.
+        :type languages: List[str]
         :param created_after: Get chapters created after this date.
 
             .. note::
@@ -556,18 +568,34 @@ class ChapterList(List[Chapter]):
                 aware.
 
         :type published_after: datetime
+        :param order: The order to sort the chapters.
+
+            .. versionadded:: 0.5
+
+        :type order: MangaFeedListOrder
+
+            .. versionadded:: 0.5
+
+        :param limit: Only return up to this many chapters.
+        :type limit: int
         """
         params = {}
-        if locales:
-            params["locales"] = locales
+        if locales is not None:
+            warnings.warn("Parameter locales is deprecated, rename to languages.", category=DeprecationWarning,
+                          stacklevel=2)
+            languages = [*languages, *locales]
+        if languages:
+            params["locales"] = languages
         if created_after:
             params["createdAtSince"] = return_date_string(created_after)
         if updated_after:
             params["updatedAtSince"] = return_date_string(updated_after)
         if published_after:
             params["publishAtSince"] = return_date_string(published_after)
+        self.manga.client._add_order(params, order)
         async for item in Pager(
-            routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client, params=params, limit_size=500
+            routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client, params=params,
+                limit_size=500, limit=limit
         ):
             item: Chapter
             item.manga = self.manga
@@ -576,10 +604,57 @@ class ChapterList(List[Chapter]):
             else:
                 self.append(item)
 
+    async def get_new(self, *,
+        languages: Optional[List[str]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+            order: Optional[MangaFeedListOrder] = None,
+            limit: Optional[int] = None,) -> "ChapterList":
+        """A method that gets chapters but returns a new ChapterList.
+
+        .. versionadded:: 0.5
+
+        :param languages: The languages to filter by.
+        :type languages: List[str]
+        :param created_after: Get chapters created after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type created_after: datetime
+        :param updated_after: Get chapters updated after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type updated_after: datetime
+        :param published_after: Get chapters published after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type published_after: datetime
+        :param order: The order to sort the chapters.
+        :type order: MangaFeedListOrder
+        :param limit: Only return up to this many chapters.
+        :type limit: int
+        :return: A new chapter list.
+        :rtype: ChapterList
+        """
+        cl = type(self)(self.manga)
+        await cl.get(languages=languages, created_after=created_after, updated_after=updated_after,
+                     published_after=published_after, order=order, limit=limit)
+        return cl
+
     def filter(
         self,
         *,
-        locales: Optional[List[str]] = None,
+            locales: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
         creation_time: Optional[Interval[datetime]] = None,
         update_time: Optional[Interval[datetime]] = None,
         publish_time: Optional[Interval[datetime]] = None,
@@ -606,11 +681,16 @@ class ChapterList(List[Chapter]):
         #. Filter by the inclusion and exclusion pairs
         #. Filter duplicates
 
-        .. versionadded:: 0.5
-            The ``read`` and ``volume`` parameters
+        .. versionchanged:: 0.5
+            Parameter ``locales`` was renamed to ``languages``
 
-        :param locales: The locales that should be present in the chapters.
+        .. deprecated:: 0.5
+            Parameter ``locales``
+
+        :param locales: An alias for the ``languages`` parameter.
         :type locales: List[str]
+        :param languages: The languages that should be present in the chapters.
+        :type languages: List[str]
         :param creation_time: An :class:`.Interval` representing the bounds of the chapter's creation time.
             :attr:`.Interval.min` will select all chapters created **after** the given time, and :attr:`.Interval.max`
             will select all chapters created **before** the given time.
@@ -733,7 +813,7 @@ class ChapterList(List[Chapter]):
         :param remove_duplicates: Whether or not to remove duplicate chapters, ie chapters with the same chapter number.
 
             .. note::
-                This will not take locales into consideration. Make sure to specify a locale in the ``locales``
+                This will not take languages into consideration. Make sure to specify a locale in the ``languages``
                 parameter if you want duplicates filtered for a specific locale.
 
         :type remove_duplicates: bool
@@ -766,8 +846,14 @@ class ChapterList(List[Chapter]):
         :param groups: An :class:`.InclusionExclusionPair` denoting the groups to include/exclude from the listing.
         :type groups: InclusionExclusionPair[Group]
         :param read: Whether or not the manga is read.
+
+            .. versionadded:: 0.5
+
         :type read: bool
         :param volumes: An :class:`.InclusionExclusionPair` denoting the volumes to include/exclude from the listing.
+
+            .. versionadded:: 0.5
+
         :type volumes: InclusionExclusionPair[int]
         :return: A filtered :class:`.ChapterList`.
 
@@ -776,9 +862,13 @@ class ChapterList(List[Chapter]):
 
         :rtype: ChapterList
         """
+        if locales is not None:
+            warnings.warn("Parameter locales is deprecated, rename to languages.", category=DeprecationWarning,
+                          stacklevel=2)
+            languages = [*languages, *locales]
         base: Iterable[Chapter] = self.copy()
         options = (
-            locales,
+            languages,
             creation_time,
             update_time,
             publish_time,
@@ -800,8 +890,8 @@ class ChapterList(List[Chapter]):
             DuplicateResolutionAlgorithm.PREVIOUS_GROUP,
             DuplicateResolutionAlgorithm.CREATION_DATE_ASC,
         ]
-        if locales:
-            base = filter(lambda chapter: chapter.language in locales, base)
+        if languages:
+            base = filter(lambda chapter: chapter.language in languages, base)
         if has_number:
             base = filter(lambda chapter: chapter.number is not None, base)
         if creation_time:
@@ -998,12 +1088,12 @@ class ChapterList(List[Chapter]):
             ma[volume_number][chapter_number] += 1
         return ma
 
-    def locales(self) -> List[str]:
-        """Get the list of locales that exist in the chapter list.
+    def languages(self) -> List[str]:
+        """Get the list of languages that exist in the chapter list.
 
         .. versionadded:: 0.5
 
-        :return: A list of locales.
+        :return: A list of languages.
         :rtype: List[str]
         """
         return list({item.language for item in self})

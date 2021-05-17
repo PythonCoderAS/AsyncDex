@@ -8,7 +8,7 @@ from .enum import OrderDirection
 @dataclass(frozen=True)
 class AuthorListOrder:
     """An object representing the various options for ordering a author list returned from
-    :meth:`.Client.get_authors`.
+    :meth:`.MangadexClient.get_authors`.
 
     .. versionadded:: 0.4
     """
@@ -20,7 +20,7 @@ class AuthorListOrder:
 @dataclass(frozen=True)
 class ChapterListOrder:
     """An object representing the various options for ordering a chapter list returned from
-    :meth:`.Client.get_chapters`.
+    :meth:`.MangadexClient.get_chapters`.
 
     .. versionadded:: 0.4
     """
@@ -55,7 +55,7 @@ class GroupListOrder:
 @dataclass(frozen=True)
 class MangaListOrder:
     """An object representing the various options for ordering a manga list returned from
-    :meth:`.Client.search`.
+    :meth:`.MangadexClient.search`.
 
     .. versionadded:: 0.4
     """
@@ -74,3 +74,17 @@ class MangaListOrder:
     
     .. seealso:: :attr:`.Manga.year`
     """
+
+
+@dataclass(frozen=True)
+class MangaFeedListOrder:
+    """An object representing the various options for ordering a manga feed list returned from the various manga feed
+    endpoints.
+
+    .. versionadded:: 0.5
+    """
+    volume: Optional[OrderDirection] = None
+    """The volume number of a chapter."""
+
+    chapter: Optional[OrderDirection] = None
+    """The chapter number of a chapter."""

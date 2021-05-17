@@ -38,6 +38,12 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
     .. versionadded:: 0.4
     """
 
+    returned: int
+    """How many items were returned so far.
+    
+    .. versionadded:: 0.5
+    """
+
     def __init__(
         self,
         url: str,
@@ -52,6 +58,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         self.model = model
         self.client = client
         self.limit = limit
+        self.returned = 0
         self.params = params or {}
         self.params.setdefault("offset", 0)
         self.params["limit"] = limit_size
@@ -113,9 +120,14 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         .. versionchanged:: 0.4
             This method will no longer hang to complete all requests.
 
+        .. versionchanged:: 0.5
+            This method will fully respect limits even if the API does not.
+
         :return: The new model.
         :rtype: Model
         """
+        if self.limit and self.returned >= self.limit:
+            raise StopAsyncIteration
         if len(self._queue) == 0:
             if self._done:
                 if len(self._reqs) > 0:
@@ -124,6 +136,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
                     raise StopAsyncIteration
             else:
                 await self._do_request(self.params["offset"])
+        self.returned += 1
         return self._queue.popleft()
 
     def __repr__(self) -> str:

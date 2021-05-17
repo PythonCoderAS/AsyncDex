@@ -103,6 +103,7 @@ routes: Dict[str, str] = {
     "group_list": "/group",
     "legacy": "/legacy/mapping",
     "logged_in_user": "/user/me",
+    "logged_user_manga_chapters": "/user/follows/manga/feed",
     "login": "/auth/login",
     "logout": "/auth/logout",
     "manga": "/manga/{id}",

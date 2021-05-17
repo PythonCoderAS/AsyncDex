@@ -7,6 +7,7 @@ v0.5
 Added
 +++++
 
+* :meth:`.ChapterList.filter` has two new parameters: ``read`` and ``volumes``.
 * :class:`.VolumeAggregate`
 * :class:`.MangaAggregate`
 * :meth:`.TagDict.__repr__`
@@ -14,7 +15,7 @@ Added
 * :meth:`.group_by_numbers`
 * :meth:`.group_by_volume_and_chapters`
 * :meth:`.calculate_aggregate`
-* :meth:`.locales`
+* :meth:`.languages`
 * :meth:`.aggregate`
 * :meth:`.mark_read`
 * :meth:`.mark_unread`
@@ -23,6 +24,10 @@ Added
 * :meth:`.ChapterList.get_read`
 * :meth:`.id_to_chapter`
 * :meth:`.batch_manga_read`
+* :meth:`.ChapterList.get` has two new parameters: ``order`` and ``limit``.
+* :meth:`.get_new`
+* :meth:`.logged_user_chapter_chapters`
+* :class:`.MangaFeedListOrder`
 
 Fixed
 +++++
@@ -57,7 +62,6 @@ Added
     * :meth:`.get_mangas`
     * :meth:`.report_page`
     * :meth:`.MangadexClient.close`
-* :meth:`.ChapterList.filter` has two new parameters: ``read`` and ``volumes``.
 
 Changed
 +++++++

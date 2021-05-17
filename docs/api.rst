@@ -170,6 +170,9 @@ List Orders
 .. autoclass:: asyncdex.list_orders.MangaListOrder
     :members:
 
+.. autoclass:: asyncdex.list_orders.MangaFeedListOrder
+    :members:
+
 Model Containers
 ................
 
