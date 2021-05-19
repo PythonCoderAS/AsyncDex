@@ -94,6 +94,7 @@ ratelimit_data: List[PathRatelimit] = [
 
 routes: Dict[str, str] = {
     "aggregate": "/manga/{id}/aggregate",
+    "auth_check": "/auth/check",
     "author": "/author/{id}",
     "author_list": "/author",
     "batch_manga_read": "/manga/read",
@@ -104,12 +105,14 @@ routes: Dict[str, str] = {
     "legacy": "/legacy/mapping",
     "logged_in_user": "/user/me",
     "logged_user_manga": "/user/follows/manga",
+    "logged_user_manga_status": "/manga/status",
     "logged_user_manga_chapters": "/user/follows/manga/feed",
     "login": "/auth/login",
     "logout": "/auth/logout",
     "manga": "/manga/{id}",
     "manga_chapters": "/manga/{id}/feed",
     "manga_read": "/manga/{id}/read",
+    "manga_read_status": "/manga/{id}/status",
     "md@h": "/at-home/server/{chapterId}",  # MD@H (MangaDex at Home)
     "ping": "/ping",
     "random_manga": "/manga/random",

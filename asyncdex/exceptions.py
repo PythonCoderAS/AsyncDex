@@ -35,14 +35,20 @@ class Ratelimit(AsyncDexException):
 class HTTPException(AsyncDexException):
     """Exceptions for HTTP status codes."""
 
+    method: str
+    """The HTTP method that caused the exception.
+    
+    .. versionadded:: 0.5
+    """
+
     path: str
     """The URL taken that hit the error."""
 
     response: aiohttp.ClientResponse
     """The :class:`aiohttp.ClientResponse` object from the request."""
 
-    def __init__(self, path: str, response: aiohttp.ClientResponse):
-        super().__init__(f"HTTP Error on {path}.")
+    def __init__(self, method: str, path: str, response: aiohttp.ClientResponse, *, msg: str = "HTTP Error on {method} for {path}."):
+        super().__init__(msg.format(**locals()))
         self.path = path
         self.response = response
 
@@ -55,10 +61,8 @@ class Unauthorized(HTTPException):
     """The :class:`aiohttp.ClientResponse` object from the request. May be ``None`` if a user tries to login without 
     stored credentials."""
 
-    def __init__(self, path: str, response: Optional[aiohttp.ClientResponse]):
-        AsyncDexException.__init__(self, f"Unauthorized for path {path}.")
-        self.path = path
-        self.response = response
+    def __init__(self, method: str, path: str, response: Optional[aiohttp.ClientResponse]):
+        super().__init__(method, path, response, msg=f"Unauthorized for {method} on {path}.")
 
 
 class Missing(AsyncDexException):
@@ -98,3 +102,20 @@ class InvalidID(AsyncDexException):
         super().__init__(f"There is no {model.__name__} with the UUID {id!r}.")
         self.id = id
         self.model = model
+
+class PermissionMismatch(HTTPException):
+    """An exception raised if the current user does not have a certain permission.
+
+    .. versionadded:: 0.5
+    """
+
+    permission: str
+    """The permission node the user is lacking."""
+
+    response: Optional[aiohttp.ClientResponse]
+    """The :class:`aiohttp.ClientResponse` object from the request. May be ``None`` if a user tries to login without 
+    stored credentials."""
+
+    def __init__(self, permission: str, method: str, path: str, response: Optional[aiohttp.ClientResponse]):
+        super().__init__(method, path, response, msg=f"Missing permission {permission} for {method} on {path}.")
+        self.permission = permission

@@ -3,7 +3,7 @@ from collections import deque
 from math import ceil
 from typing import Any, AsyncIterator, Generic, List, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
 
-from .abc import Model
+from .abc import GenericModelList, Model, ModelList
 
 if TYPE_CHECKING:
     from ..client import MangadexClient
@@ -147,6 +147,22 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         """
         return f"{type(self).__name__}(url={self.url!r}, offset={self.params['offset']}, limit={self.params['limit']})"
 
-    async def as_list(self) -> List[_ModelT]:
-        """Returns all items in the Pager as a list."""
-        return [item async for item in self]
+    async def as_list(self) -> ModelList[_ModelT]:
+        """Returns all items in the Pager as a list.
+
+        .. versionchanged:: 0.5
+            If :attr:`.model` is :class:`.Manga`, this method will return :class:`.MangaList`. Otherwise, this method
+            will return a :class:`.GenericModelList`.
+
+        :return: A :class:`.ModelList` with the total models.
+
+            .. versionchanged:: 0.5
+                Prior to 0.5, this method returned a normal :class:`list`.
+
+        :rtype: ModelList
+        """
+        from .manga import Manga, MangaList
+        if issubclass(self.model, Manga):
+            return MangaList(self.client, entries=(item async for item in self))
+        else:
+            return GenericModelList(item async for item in self)

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
@@ -5,7 +6,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Option
 from .enum import Relationship
 
 if TYPE_CHECKING:
-    from .models.abc import Model
+    from .models.abc import GenericModelList, Model
 
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
@@ -180,44 +181,45 @@ def parse_relationships(data: dict, obj: "Model"):
     """
     # Notes for future contributors: As of May 7, the MangaDex API has a quirk where it sends the same relationship
     # (same UUID and same type) multiple times. Until this bug is fixed, I had to check that each UUID was unique.
-    relationship_data = {}
-    seen_uuids = {}
+    from .models.abc import GenericModelList
+    relationship_data = defaultdict(GenericModelList)
+    seen_uuids = defaultdict(list)
     if "relationships" in data:
         for relationship in data["relationships"]:
             assert "id" in relationship, "Missing ID."
             relationship_id = relationship["id"]
             relationship_type = Relationship(relationship["type"])
             if relationship_type == Relationship.MANGA:
-                dupe_list = seen_uuids.setdefault("mangas", [])
+                dupe_list = seen_uuids["mangas"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("mangas", []).append(obj.client.get_manga(relationship_id))
+                    relationship_data["mangas"].append(obj.client.get_manga(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.AUTHOR:
-                dupe_list = seen_uuids.setdefault("authors", [])
+                dupe_list = seen_uuids["authors"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("authors", []).append(obj.client.get_author(relationship_id))
+                    relationship_data["authors"].append(obj.client.get_author(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.ARTIST:
-                dupe_list = seen_uuids.setdefault("artists", [])
+                dupe_list = seen_uuids["artists"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("artists", []).append(obj.client.get_author(relationship_id))
+                    relationship_data["artists"].append(obj.client.get_author(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.CHAPTER:
-                dupe_list = seen_uuids.setdefault("chapters", [])
+                dupe_list = seen_uuids["chapters"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("chapters", []).append(obj.client.get_chapter(relationship_id))
+                    relationship_data["chapters"].append(obj.client.get_chapter(relationship_id))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.USER:
-                dupe_list = seen_uuids.setdefault("users", [])
+                dupe_list = seen_uuids["users"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("_users", []).append(obj.client.get_user(relationship_id))
+                    relationship_data["_users"].append(obj.client.get_user(relationship_id))
                     # Why `_users`? Because we never want a variable called users. All objects returning user
                     # relationships will not have a variable called users.
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.SCANLATION_GROUP:
-                dupe_list = seen_uuids.setdefault("groups", [])
+                dupe_list = seen_uuids["groups"]
                 if relationship_id not in dupe_list:
-                    relationship_data.setdefault("groups", []).append(obj.client.get_group(relationship_id))
+                    relationship_data["groups"].append(obj.client.get_group(relationship_id))
                     dupe_list.append(relationship_id)
     for key, value in relationship_data.items():
         setattr(obj, key, value)

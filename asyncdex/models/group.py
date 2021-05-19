@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, TYPE_CHECKING
 
-from .abc import Model
+from .abc import GenericModelList, Model
 from .mixins import DatetimeMixin
 from .user import User
 from ..utils import copy_key_to_attribute
@@ -21,10 +21,10 @@ class Group(Model, DatetimeMixin):
     leader: User
     """The user who created the group."""
 
-    members: List[User]
+    members: GenericModelList[User]
     """Users who are members of the group."""
 
-    chapters: List["Chapter"]
+    chapters: GenericModelList["Chapter"]
     """A list of chapters uploaded by the group."""
 
     def parse(self, data: Dict[str, Any]):
@@ -36,13 +36,13 @@ class Group(Model, DatetimeMixin):
                 attributes, "leader", self, transformation=lambda attrib: User(self.client, data=attrib)
             )
             if "members" in attributes:
-                self.members = [User(self.client, data=member) for member in attributes["members"]]
+                self.members = GenericModelList(User(self.client, data=member) for member in attributes["members"])
             self._process_times(attributes)
         self._parse_relationships(data)
         if hasattr(self, "users"):
             del self.users
         if not hasattr(self, "chapters"):
-            self.chapters = []
+            self.chapters = GenericModelList()
 
     async def load_chapters(self):
         """Shortcut method that calls :meth:`.Client.batch_chapters` with the chapters that belong to the group.

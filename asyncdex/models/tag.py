@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from .abc import Model
+from .abc import GenericModelList, Model
 from ..utils import DefaultAttrDict
 
 if TYPE_CHECKING:
@@ -67,13 +67,13 @@ class TagDict(Dict[str, Tag]):
     .. versionadded:: 0.4
     """
 
-    def groups(self) -> Dict[str, List[Tag]]:
+    def groups(self) -> Dict[str, GenericModelList[Tag]]:
         """Categorizes the tags contained into a dictionary of the groups the tags belong to.
 
         :return: A dictionary of group name to the list of tags that contain the name.
         :rtype: Dict[str, List[Tag]]
         """
-        retval = defaultdict(list)
+        retval = defaultdict(GenericModelList)
         for item in self.values():
             retval[item.group].append(item)
         return dict(retval)

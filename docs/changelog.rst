@@ -22,13 +22,48 @@ Added
 * :meth:`.toggle_read`
 * :meth:`.Chapter.get_read`
 * :meth:`.ChapterList.get_read`
-* :meth:`.id_to_chapter`
+* :meth:`.id_map`
 * :meth:`.batch_manga_read`
 * :meth:`.ChapterList.get` has two new parameters: ``order`` and ``limit``.
 * :meth:`.get_new`
 * :meth:`.logged_user_chapter_chapters`
 * :class:`.MangaFeedListOrder`
 * :meth:`.logged_user_manga`
+* :class:`.ModelList`
+* :class:`.GenericModelList`
+* :meth:`.ChapterList.fetch_all`
+* :attr:`.Chapter.read`
+* :attr:`.Manga.reading_status`
+* :meth:`.Manga.get_reading_status`
+* :meth:`.Manga.set_reading_status`
+* :class:`.MangaList`
+* :class:`.ClientUser`
+* :attr:`.MangadexClient.user`
+* :class:`.PermissionMismatch`
+
+Changed
++++++++
+
+* Attributes converted to a :class:`.GenericModelList`:
+    * :attr:`.Chapter.groups`
+    * :attr:`.Group.members`
+    * :attr:`.Group.chapters`
+    * :attr:`.Manga.tags`
+    * :attr:`.Manga.authors`
+    * :attr:`.Manga.artists`
+    * :attr:`.User.chapters`
+* :class:`.Pager` will return :class:`.GenericModelList`\ s (or :class:`.MangaList` if parameter ``model`` is :class:`.Manga`).
+* The key in the dictionary returned by :meth:`.TagDict.groups` is now a :class:`.GenericModelList`.
+* :meth:`.parse_relationships` will now set :class:`.GenericModelList`\ s instead of normal lists.
+
+
+Deprecated
+++++++++++
+
+* :meth:`.MangadexClient.logged_in_user`
+* :meth:`.Chapter.get_page`
+* Parameter ``locales`` for :meth:`.ChapterList.get`
+* Parameter ``locales`` for :meth:`.ChapterList.filter`
 
 Fixed
 +++++

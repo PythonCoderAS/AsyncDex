@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING,
 from aiohttp import ClientError
 from natsort import natsort_keygen
 
-from .abc import Model
+from .abc import GenericModelList, Model, ModelList
 from .aggregate import MangaAggregate, VolumeAggregate
 from .group import Group
 from .mixins import DatetimeMixin
@@ -83,7 +83,7 @@ class Chapter(Model, DatetimeMixin):
     user: User
     """The user that uploaded this chapter."""
 
-    groups: List[Group]
+    groups: GenericModelList[Group]
     """The groups that uploaded this chapter."""
 
     read: bool
@@ -367,7 +367,7 @@ class Chapter(Model, DatetimeMixin):
 
         :raises: :class:`.Unauthorized` is authentication is missing.
         """
-        self.client.raise_exception_if_not_authenticated(routes["read"])
+        self.client.raise_exception_if_not_authenticated("GET", routes["read"])
         r = await self.client.request("POST", routes["read"].format(id=self.id))
         r.raise_for_status()
         self.read = True
@@ -380,7 +380,7 @@ class Chapter(Model, DatetimeMixin):
 
         :raises: :class:`.Unauthorized` is authentication is missing.
         """
-        self.client.raise_exception_if_not_authenticated(routes["read"])
+        self.client.raise_exception_if_not_authenticated("GET", routes["read"])
         r = await self.client.request("DELETE", routes["read"].format(id=self.id))
         r.raise_for_status()
         self.read = False
@@ -511,7 +511,7 @@ def _resolve_duplicates(
     return final
 
 
-class ChapterList(List[Chapter]):
+class ChapterList(ModelList[Chapter]):
     """An object representing a list of chapters from a manga.
 
     .. versionadded:: 0.3
@@ -1101,18 +1101,8 @@ class ChapterList(List[Chapter]):
         """
         return list({item.language for item in self})
 
-    def id_to_chapter(self) -> Dict[str, Chapter]:
-        """Generates a mapping of chapter UUID to chapter object.
-
-        .. versionadded:: 0.5
-
-        :return: A dictionary where the keys are UUIDs and the values are :class:`.Chapter` objects.
-        :rtype: Dict[str, Chapter]
-        """
-        return {item.id: item for item in self}
-
     def _update_read_data(self, data: Dict[str, Union[str, List[str]]]):
-        id_mapping = self.id_to_chapter()
+        id_mapping = self.id_map()
         for id in data["data"]:
             if id in id_mapping:
                 id_mapping[id].read = True
@@ -1122,10 +1112,13 @@ class ChapterList(List[Chapter]):
 
         .. versionadded:: 0.5
         """
-        self.manga.client.raise_exception_if_not_authenticated(routes["manga_read"])
+        self.manga.client.raise_exception_if_not_authenticated("GET", routes["manga_read"])
         r = await self.manga.client.request("GET", routes["manga_read"].format(id=self.manga.id))
         self.manga._check_404(r)
         r.raise_for_status()
         json = await r.json()
         r.close()
         self._update_read_data(json)
+
+    async def fetch_all(self):
+        await self.manga.client.batch_chapters(*self)

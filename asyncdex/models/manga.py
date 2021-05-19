@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import asyncio
+from typing import Any, Dict, Iterable, List, Optional, TYPE_CHECKING
 
-from .abc import Model
+from .abc import GenericModelList, Model, ModelList
 from .aggregate import MangaAggregate
 from .author import Author
 from .chapter import ChapterList
@@ -8,7 +9,7 @@ from .mixins import DatetimeMixin
 from .tag import Tag
 from .title import TitleList
 from ..constants import routes
-from ..enum import ContentRating, Demographic, MangaStatus
+from ..enum import ContentRating, Demographic, FollowStatus, MangaStatus
 from ..utils import DefaultAttrDict, copy_key_to_attribute
 
 if TYPE_CHECKING:
@@ -63,10 +64,10 @@ class Manga(Model, DatetimeMixin):
     rating: ContentRating
     """The manga's content rating."""
 
-    tags: List[Tag]
+    tags: GenericModelList[Tag]
     """A list of :class:`.Tag` objects that represent the manga's tags. A manga without tags will have an empty list."""
 
-    authors: List[Author]
+    authors: GenericModelList[Author]
     """A list of :class:`.Author` objects that represent the manga's authors.
     
     .. seealso:: :attr:`.artists`
@@ -75,7 +76,7 @@ class Manga(Model, DatetimeMixin):
         In order to efficiently get all authors and artists in one go, use :meth:`.load_authors`.
     """
 
-    artists: List[Author]
+    artists: GenericModelList[Author]
     """A list of :class:`.Author` objects that represent the manga's artists.
     
     .. seealso:: :attr:`.authors`
@@ -124,6 +125,12 @@ class Manga(Model, DatetimeMixin):
     """A :class:`.ChapterList` representing the chapters of the manga.
     
     .. versionadded:: 0.3
+    """
+
+    reading_status: Optional[FollowStatus]
+    """A value of :class:`.FollowStatus` representing the logged in user's reading status.
+    
+    .. versionadded:: 0.5
     """
 
     @property
@@ -236,10 +243,11 @@ class Manga(Model, DatetimeMixin):
         version: int = 0,
         data: Optional[Dict[str, Any]] = None,
     ):
-        self.tags = []
+        self.tags = GenericModelList()
         self.titles = DefaultAttrDict(default=lambda: TitleList())
         self.descriptions = DefaultAttrDict(default=lambda: None)
         self.chapters = ChapterList(self)
+        self.reading_status = None
         super().__init__(client, id=id, version=version, data=data)
 
     def _process_titles(self, title_dict: Dict[str, str]):
@@ -334,3 +342,75 @@ class Manga(Model, DatetimeMixin):
         ma.parse(await r.json())
         r.close()
         return ma
+
+    async def get_reading_status(self):
+        """Gets the manga's reading status. Requires authentication.
+
+        .. versionadded:: 0.5
+
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["manga_read_status"])
+        r = await self.client.request("GET", routes["manga_read_status"].format(id=self.id))
+        r.raise_for_status()
+        json = await r.json()
+        r.close()
+        self.reading_status = FollowStatus(json["status"])
+
+    async def set_reading_status(self, status: Optional[FollowStatus]):
+        """Sets the manga's reading status. Requires authentication.
+
+        .. versionadded:: 0.5
+
+        :param status: The new status to set. Can be None to remove reading status.
+        :type status: Optional[FollowStatus]
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["manga_read_status"])
+        r = await self.client.request("POST", routes["manga_read_status"].format(id=self.id), json={"status":
+                                                                                                        status.value
+                                                                                                        if status
+                                                                                                        else None})
+        r.raise_for_status()
+        r.close()
+        self.reading_status = status
+
+class MangaList(ModelList[Manga]):
+    """An object representing a list of manga.
+
+    .. versionadded:: 0.5
+    """
+
+    client: "MangadexClient"
+    """The client that this manga list belongs to."""
+
+    def __init__(self, client: "MangadexClient", *, entries: Optional[Iterable[Manga]] = None):
+        super().__init__(entries or [])
+        self.client = client
+
+    async def fetch_all(self):
+        return await self.client.batch_mangas(*self)
+
+    async def get_reading_status(self):
+        """Get the reading status of all manga in the list. Requires authentication.
+
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_manga_status"])
+        r = await self.client.request("GET", routes["logged_user_manga_status"])
+        r.raise_for_status()
+        json = await r.json()
+        r.close()
+        map = self.id_map()
+        for uuid, val in json["statuses"].items():
+            if uuid in map:
+                map[uuid].reading_status = FollowStatus(val)
+
+    async def set_reading_status(self, status: Optional[FollowStatus]):
+        """Sets the reading status of all manga in the list. Requires authentication.
+
+        :param status: The new status to set. Can be None to remove reading status.
+        :type status: Optional[FollowStatus]
+        :raises: :class:`.Unauthorized` is authentication is missing.
+        """
+        await asyncio.gather(*[item.set_reading_status(status) for item in self])

@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from json import dumps as convert_obj_to_json
@@ -20,6 +21,7 @@ from .models.manga import Manga
 from .models.pager import Pager
 from .models.tag import Tag, TagDict
 from .models.user import User
+from .models.client_user import ClientUser
 from .ratelimit import Ratelimits
 from .utils import remove_prefix, return_date_string
 
@@ -102,6 +104,12 @@ class MangadexClient:
     .. versionadded:: 0.2
     """
 
+    user: ClientUser
+    """The user of the client.
+    
+    .. versionadded:: 0.5
+    """
+
     # Dunder methods
 
     def __init__(
@@ -129,6 +137,7 @@ class MangadexClient:
             self.username = self.password = self.refresh_token = None
         self.ratelimits = Ratelimits(*ratelimit_data)
         self.tag_cache = TagDict()
+        self.user = ClientUser(self)
         self._request_count = 0
         self._request_second_start = datetime.utcnow()  # Use utcnow to keep everything using UTF+0 and also helps
         # with daylight savings.
@@ -267,7 +276,7 @@ class MangadexClient:
                 do_retry = True
             else:
                 try:
-                    raise Unauthorized(url, resp)
+                    raise Unauthorized(method, url, resp)
                 finally:
                     await resp.release()
         if resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
@@ -311,19 +320,26 @@ class MangadexClient:
 
     # Authentication
 
-    def raise_exception_if_not_authenticated(self, path: str):
+    def raise_exception_if_not_authenticated(self, method: str, path: str):
         """Raise an exception if authentication is missing. This is ideally used before making requests that will
         always need authentication.
 
         .. versionadded:: 0.5
 
+        :param method: The method to show.
+
+            .. seealso:: :attr:`.Unauthorized.method`.
+
+        :type method: str
         :param path: The path to display.
+
             .. seealso:: :attr:`.Unauthorized.path`.
+
         :type path: str
         :raises: :class:`.Unauthorized`
         """
         if self.anonymous_mode:
-            raise Unauthorized(path, None)
+            raise Unauthorized(method, path, None)
 
     @property
     def session_token(self) -> Optional[str]:
@@ -358,6 +374,7 @@ class MangadexClient:
         r.close()
         self.session_token = data["token"]["session"]
         self.refresh_token = data["token"]["refresh"]
+        await self.user.fetch()
 
     async def login(self, username: Optional[str] = None, password: Optional[str] = None):
         """Logs in to the MangaDex API.
@@ -376,7 +393,7 @@ class MangadexClient:
             self.password = password
             self.anonymous_mode = False
         elif not (self.username and self.password):
-            raise Unauthorized(routes["login"], None)
+            self.raise_exception_if_not_authenticated("POST", routes["login"])
         r = await self.request(
             "POST", routes["login"], json={"username": self.username, "password": self.password}, with_auth=False
         )
@@ -384,6 +401,7 @@ class MangadexClient:
         r.close()
         self.session_token = data["token"]["session"]
         self.refresh_token = data["token"]["refresh"]
+        await self.user.fetch()
 
     async def logout(self):
         """Log out from the API. If a refresh token exists, calls the logout route on the API. The username and
@@ -551,84 +569,16 @@ class MangadexClient:
 
         .. versionadded:: 0.3
 
+        .. deprecated:: 0.5
+            Use :attr:`.user` and :meth:`.ClientUser.fetch_user`
+
         :return: A :class:`.User` object.
         :rtype: User
         """
-        r = await self.request("GET", routes["logged_in_user"])
-        json = await r.json()
-        r.close()
-        return User(self, data=json)
-
-    def logged_user_manga_chapters(self, *, languages: Optional[List[str]] = None, created_after: Optional[datetime] =
-    None,
-                                  updated_after: Optional[datetime] = None,
-                                  published_after: Optional[datetime] = None,
-                                  order: Optional[MangaFeedListOrder] = None,
-                                  limit: Optional[int] = None,
-                                  ) -> Pager[Chapter]:
-        """Get the chapters from the manga that the logged in user is following. Requires authentication.
-
-        .. versionadded:: 0.5
-
-        :param languages: The languages to filter by.
-        :type languages: List[str]
-                :param created_after: Get chapters created after this date.
-
-            .. note::
-                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
-                aware.
-
-        :type created_after: datetime
-        :param updated_after: Get chapters updated after this date.
-
-            .. note::
-                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
-                aware.
-
-        :type updated_after: datetime
-        :param published_after: Get chapters published after this date.
-
-            .. note::
-                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
-                aware.
-
-        :type published_after: datetime
-        :param order: The order to sort the chapters.
-        :type order: MangaFeedListOrder
-        :param limit: Only return up to this many chapters.
-
-            .. note::
-                Not setting a limit when you are only interested in a certain amount of responses may result in the
-                Pager making more requests than necessary, consuming ratelimits.
-
-        :type limit: int
-        :raise: :class:`.Unauthorized` is there is no authentication.
-        :return: A Pager with the chapters.
-        :rtype: Pager[Chapter]
-        """
-        params = {}
-        if languages:
-            params["locales"] = languages
-        if created_after:
-            params["createdAtSince"] = return_date_string(created_after)
-        if updated_after:
-            params["updatedAtSince"] = return_date_string(updated_after)
-        if published_after:
-            params["publishAtSince"] = return_date_string(published_after)
-        self._add_order(params, order)
-        self.raise_exception_if_not_authenticated(routes["logged_user_manga_chapters"])
-        return Pager(routes["logged_user_manga_chapters"], Chapter, self, params=params, limit=limit, limit_size=500)
-
-    def logged_user_manga(self) -> Pager[Manga]:
-        """Get the manga that the logged in user follows.
-
-        .. versionadded:: 0.5
-
-        :return: The manga that the logged in user follows.
-        :rtype: Pager[Manga]
-        """
-        self.raise_exception_if_not_authenticated(routes["logged_user_manga"])
-        return Pager(routes["logged_user_manga"], Manga, self)
+        warnings.warn("MangadexClient.logged_in_user is deprecated. Use MangadexClient.user and "
+                      "ClientUser.fetch_user().", category=DeprecationWarning, stacklevel=2)
+        await self.user.fetch_user()
+        return self.user
 
     def get_group(self, id: str) -> Group:
         """Get a group using it's ID.

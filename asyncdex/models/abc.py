@@ -1,7 +1,7 @@
 """Contains ABCs for the various models"""
-
+import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, TYPE_CHECKING, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TYPE_CHECKING, TypeVar
 
 from aiohttp import ClientResponse
 
@@ -135,3 +135,52 @@ class Model(ABC):
 
     def __hash__(self):
         return hash((self.id, self.version, self.client))
+
+
+class ModelList(ABC, List[_T], Generic[_T]):
+    """An ABC representing a list of models.
+
+    .. note::
+        Models of different types should not be combined, meaning placing a Manga and a Chapter into the same list is
+        invalid and will lead to undefined behavior.
+
+    .. versionadded:: 0.5
+    """
+
+    def id_map(self) -> Dict[str, _T]:
+        """Return a mapping of item UUID to items.
+
+        .. versionadded:: 0.5
+
+        :return: A dictionary where the keys are strings and the values are :class:`Model` objects.
+        :rtype: Dict[str, Model]
+        """
+        return {item.id: item for item in self}
+
+    async def fetch_all(self):
+        """Fetch all models.
+
+        .. versionadded:: 0.5
+        """
+        from .manga import Manga
+        from .chapter import Chapter
+        from .group import Group
+        from .author import Author
+        if self:
+            if isinstance(self[0], Manga):
+                await self[0].client.batch_mangas(*self)
+            elif isinstance(self[0], Chapter):
+                await self[0].client.batch_chapters(*self)
+            elif isinstance(self[0], Group):
+                await self[0].client.batch_groups(*self)
+            elif isinstance(self[0], Author):
+                await self[0].client.batch_authors(*self)
+            else:
+                await asyncio.gather(*[asyncio.create_task(item.fetch()) for item in self])
+
+
+class GenericModelList(ModelList[_T], Generic[_T]):
+    """A class representing a generic list of models with no special methods.
+
+    .. versionadded:: 0.5
+    """

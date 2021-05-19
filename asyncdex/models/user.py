@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
-from .abc import Model
+from .abc import GenericModelList, Model
 from ..utils import copy_key_to_attribute
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ class User(Model):
     username: str
     """THe user's username."""
 
-    chapters: List["Chapter"]
+    chapters: GenericModelList["Chapter"]
     """The chapters the user uploaded"""
 
     def parse(self, data: Dict[str, Any]):
@@ -28,7 +28,7 @@ class User(Model):
             copy_key_to_attribute(attributes, "username", self)
         self._parse_relationships(data)
         if not hasattr(self, "chapters"):
-            self.chapters = []
+            self.chapters = GenericModelList()
 
     async def load_chapters(self):
         """Shortcut method that calls :meth:`.Client.batch_chapters` with the chapters that belong to the user.

@@ -10,6 +10,14 @@ Client
     :members:
     :special-members: __aenter__, __aexit__, __repr__
 
+ClientUser
+..........
+
+.. autoclass:: asyncdex.models.client_user.ClientUser
+    :members:
+    :inherited-members:
+    :special-members: __str__, __eq__, __ne__, __hash__
+
 Models
 ++++++
 
@@ -60,6 +68,9 @@ Exceptions
     :members:
 
 .. autoexception:: asyncdex.exceptions.Missing
+    :members:
+
+.. autoexception:: asyncdex.exceptions.PermissionMismatch
     :members:
 
 .. autoexception:: asyncdex.exceptions.Ratelimit
@@ -176,11 +187,23 @@ List Orders
 Model Containers
 ................
 
+.. autoclass:: asyncdex.models.abc.ModelList
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.abc.GenericModelList
+    :members:
+    :special-members: __repr__
+
 .. autoclass:: asyncdex.models.title.TitleList
     :members:
     :special-members: __repr__
 
 .. autoclass:: asyncdex.models.ChapterList
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.MangaList
     :members:
     :special-members: __repr__
 
