@@ -535,8 +535,8 @@ class ChapterList(ModelList[Chapter]):
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
         published_after: Optional[datetime] = None,
-            order: Optional[MangaFeedListOrder] = None,
-            limit: Optional[int] = None,
+        order: Optional[MangaFeedListOrder] = None,
+        limit: Optional[int] = None,
     ):
         """Gets the list of chapters.
 
@@ -584,8 +584,9 @@ class ChapterList(ModelList[Chapter]):
         """
         params = {}
         if locales is not None:
-            warnings.warn("Parameter locales is deprecated, rename to languages.", category=DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn(
+                "Parameter locales is deprecated, rename to languages.", category=DeprecationWarning, stacklevel=2
+            )
             languages = [*languages, *locales]
         if languages:
             params["locales"] = languages
@@ -597,8 +598,12 @@ class ChapterList(ModelList[Chapter]):
             params["publishAtSince"] = return_date_string(published_after)
         self.manga.client._add_order(params, order)
         async for item in Pager(
-            routes["manga_chapters"].format(id=self.manga.id), Chapter, self.manga.client, params=params,
-                limit_size=500, limit=limit
+            routes["manga_chapters"].format(id=self.manga.id),
+            Chapter,
+            self.manga.client,
+            params=params,
+            limit_size=500,
+            limit=limit,
         ):
             item: Chapter
             item.manga = self.manga
@@ -607,13 +612,16 @@ class ChapterList(ModelList[Chapter]):
             else:
                 self.append(item)
 
-    async def get_new(self, *,
+    async def get_new(
+        self,
+        *,
         languages: Optional[List[str]] = None,
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
         published_after: Optional[datetime] = None,
-            order: Optional[MangaFeedListOrder] = None,
-            limit: Optional[int] = None,) -> "ChapterList":
+        order: Optional[MangaFeedListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> "ChapterList":
         """A method that gets chapters but returns a new ChapterList.
 
         .. versionadded:: 0.5
@@ -649,14 +657,20 @@ class ChapterList(ModelList[Chapter]):
         :rtype: ChapterList
         """
         cl = type(self)(self.manga)
-        await cl.get(languages=languages, created_after=created_after, updated_after=updated_after,
-                     published_after=published_after, order=order, limit=limit)
+        await cl.get(
+            languages=languages,
+            created_after=created_after,
+            updated_after=updated_after,
+            published_after=published_after,
+            order=order,
+            limit=limit,
+        )
         return cl
 
     def filter(
         self,
         *,
-            locales: Optional[List[str]] = None,
+        locales: Optional[List[str]] = None,
         languages: Optional[List[str]] = None,
         creation_time: Optional[Interval[datetime]] = None,
         update_time: Optional[Interval[datetime]] = None,
@@ -866,8 +880,9 @@ class ChapterList(ModelList[Chapter]):
         :rtype: ChapterList
         """
         if locales is not None:
-            warnings.warn("Parameter locales is deprecated, rename to languages.", category=DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn(
+                "Parameter locales is deprecated, rename to languages.", category=DeprecationWarning, stacklevel=2
+            )
             languages = [*languages, *locales]
         base: Iterable[Chapter] = self.copy()
         options = (

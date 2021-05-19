@@ -145,8 +145,13 @@ class Ratelimits:
                 return -1, ratelimit_obj
             if ratelimit_obj.can_call(method):
                 return -1, ratelimit_obj
-            return ceil(ratelimit_obj.time_until_expire().total_seconds() + (ratelimit_obj.ratelimit_time * ((
-                    ratelimit_obj.ratelimit_enqueued // 60)) + 1)), ratelimit_obj
+            return (
+                ceil(
+                    ratelimit_obj.time_until_expire().total_seconds()
+                    + (ratelimit_obj.ratelimit_time * ((ratelimit_obj.ratelimit_enqueued // 60)) + 1)
+                ),
+                ratelimit_obj,
+            )
 
     async def sleep(self, url: str, method: str) -> Optional[PathRatelimit]:
         """Helper function that sleeps the amount of time returned by :meth:`.check`.

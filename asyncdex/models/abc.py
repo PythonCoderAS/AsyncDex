@@ -166,6 +166,7 @@ class ModelList(ABC, List[_T], Generic[_T]):
         from .chapter import Chapter
         from .group import Group
         from .author import Author
+
         if self:
             if isinstance(self[0], Manga):
                 await self[0].client.batch_mangas(*self)

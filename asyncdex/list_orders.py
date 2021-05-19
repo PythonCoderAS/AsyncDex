@@ -83,6 +83,7 @@ class MangaFeedListOrder:
 
     .. versionadded:: 0.5
     """
+
     volume: Optional[OrderDirection] = None
     """The volume number of a chapter."""
 

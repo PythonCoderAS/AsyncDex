@@ -182,6 +182,7 @@ def parse_relationships(data: dict, obj: "Model"):
     # Notes for future contributors: As of May 7, the MangaDex API has a quirk where it sends the same relationship
     # (same UUID and same type) multiple times. Until this bug is fixed, I had to check that each UUID was unique.
     from .models.abc import GenericModelList
+
     relationship_data = defaultdict(GenericModelList)
     seen_uuids = defaultdict(list)
     if "relationships" in data:

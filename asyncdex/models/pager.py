@@ -1,7 +1,7 @@
 import asyncio
 from collections import deque
 from math import ceil
-from typing import Any, AsyncIterator, Generic, List, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
+from typing import Any, AsyncIterator, Generic, MutableMapping, Optional, TYPE_CHECKING, Type, TypeVar
 
 from .abc import GenericModelList, Model, ModelList
 
@@ -162,6 +162,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         :rtype: ModelList
         """
         from .manga import Manga, MangaList
+
         if issubclass(self.model, Manga):
             return MangaList(self.client, entries=(item async for item in self))
         else:

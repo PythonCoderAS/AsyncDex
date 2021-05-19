@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, Iterable, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, Iterable, Optional, TYPE_CHECKING
 
 from .abc import GenericModelList, Model, ModelList
 from .aggregate import MangaAggregate
@@ -367,13 +367,13 @@ class Manga(Model, DatetimeMixin):
         :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["manga_read_status"])
-        r = await self.client.request("POST", routes["manga_read_status"].format(id=self.id), json={"status":
-                                                                                                        status.value
-                                                                                                        if status
-                                                                                                        else None})
+        r = await self.client.request(
+            "POST", routes["manga_read_status"].format(id=self.id), json={"status": status.value if status else None}
+        )
         r.raise_for_status()
         r.close()
         self.reading_status = status
+
 
 class MangaList(ModelList[Manga]):
     """An object representing a list of manga.

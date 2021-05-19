@@ -12,16 +12,16 @@ import aiohttp
 from .constants import ratelimit_data, routes
 from .enum import ContentRating, Demographic, MangaStatus, TagMode
 from .exceptions import InvalidID, Ratelimit, Unauthorized
-from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaFeedListOrder, MangaListOrder
+from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaListOrder
 from .models.abc import Model
 from .models.author import Author
 from .models.chapter import Chapter
+from .models.client_user import ClientUser
 from .models.group import Group
 from .models.manga import Manga
 from .models.pager import Pager
 from .models.tag import Tag, TagDict
 from .models.user import User
-from .models.client_user import ClientUser
 from .ratelimit import Ratelimits
 from .utils import remove_prefix, return_date_string
 
@@ -113,16 +113,16 @@ class MangadexClient:
     # Dunder methods
 
     def __init__(
-            self,
-            *,
-            username: Optional[str] = None,
-            password: Optional[str] = None,
-            refresh_token: Optional[str] = None,
-            sleep_on_ratelimit: bool = True,
-            session: aiohttp.ClientSession = None,
-            api_url: str = "https://api.mangadex.org",
-            anonymous: bool = False,
-            **session_kwargs,
+        self,
+        *,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+        sleep_on_ratelimit: bool = True,
+        session: aiohttp.ClientSession = None,
+        api_url: str = "https://api.mangadex.org",
+        anonymous: bool = False,
+        **session_kwargs,
     ):
         self.username = username
         self.password = password
@@ -153,8 +153,7 @@ class MangadexClient:
         return self
 
     async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException],
-            exc_tb: Optional[TracebackType]
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ):
         """Exit the client. This will also close the underlying session object."""
         self.username = self.password = self.refresh_token = self.session_token = None
@@ -172,15 +171,15 @@ class MangadexClient:
     # Request methods
 
     async def request(
-            self,
-            method: str,
-            url: str,
-            *,
-            params: Optional[Mapping[str, Optional[Union[str, Sequence[str], bool, float]]]] = None,
-            json: Any = None,
-            with_auth: bool = True,
-            retries: int = 3,
-            **session_request_kwargs,
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Optional[Union[str, Sequence[str], bool, float]]]] = None,
+        json: Any = None,
+        with_auth: bool = True,
+        retries: int = 3,
+        **session_request_kwargs,
     ) -> aiohttp.ClientResponse:
         """Perform a request.
 
@@ -282,15 +281,15 @@ class MangadexClient:
         if resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
             if resp.headers.get("x-ratelimit-retry-after", ""):
                 diff = (
-                            datetime.utcfromtimestamp(int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()
-                    ).total_seconds()
+                    datetime.utcfromtimestamp(int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()
+                ).total_seconds()
                 logger.warning("Sleeping for %s seconds.", diff)
-                await asyncio.sleep(
-                    diff
-                )
+                await asyncio.sleep(diff)
             else:
                 logger.warning("Sleeping for 1.25 seconds.")
-                await asyncio.sleep(1.25)  # This is probably the result of multiple devices, so sleep for a second. Will
+                await asyncio.sleep(
+                    1.25
+                )  # This is probably the result of multiple devices, so sleep for a second. Will
                 # give up on the 4th try though if it is persistent.
             do_retry = True
         if resp.status // 100 == 5:  # 5xx
@@ -575,8 +574,11 @@ class MangadexClient:
         :return: A :class:`.User` object.
         :rtype: User
         """
-        warnings.warn("MangadexClient.logged_in_user is deprecated. Use MangadexClient.user and "
-                      "ClientUser.fetch_user().", category=DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "MangadexClient.logged_in_user is deprecated. Use MangadexClient.user and " "ClientUser.fetch_user().",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         await self.user.fetch_user()
         return self.user
 
@@ -689,14 +691,14 @@ class MangadexClient:
 
     @staticmethod
     def _add_order(
-            params: Dict[str, Any],
-            order: Optional[Union[GroupListOrder, AuthorListOrder, ChapterListOrder, MangaListOrder]],
+        params: Dict[str, Any],
+        order: Optional[Union[GroupListOrder, AuthorListOrder, ChapterListOrder, MangaListOrder]],
     ):
         if order:
             params["order"] = {k: v.value for k, v in asdict(order) if v}
 
     def get_groups(
-            self, *, name: Optional[str] = None, order: Optional[GroupListOrder] = None, limit: Optional[int] = None
+        self, *, name: Optional[str] = None, order: Optional[GroupListOrder] = None, limit: Optional[int] = None
     ) -> Pager[Group]:
         """Creates a :class:`.Pager` for groups.
 
@@ -730,20 +732,20 @@ class MangadexClient:
         return Pager(routes["group_list"], Group, self, params=params, limit=limit)
 
     def get_chapters(
-            self,
-            *,
-            title: Optional[str] = None,
-            groups: Optional[Sequence[Union[str, Group]]] = None,
-            uploader: Optional[Union[str, User]] = None,
-            manga: Optional[Union[str, Manga]] = None,
-            volume: Optional[str] = None,
-            chapter_number: Optional[str] = None,
-            language: Optional[str] = None,
-            created_after: Optional[datetime] = None,
-            updated_after: Optional[datetime] = None,
-            published_after: Optional[datetime] = None,
-            order: Optional[ChapterListOrder] = None,
-            limit: Optional[int] = None,
+        self,
+        *,
+        title: Optional[str] = None,
+        groups: Optional[Sequence[Union[str, Group]]] = None,
+        uploader: Optional[Union[str, User]] = None,
+        manga: Optional[Union[str, Manga]] = None,
+        volume: Optional[str] = None,
+        chapter_number: Optional[str] = None,
+        language: Optional[str] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+        order: Optional[ChapterListOrder] = None,
+        limit: Optional[int] = None,
     ) -> Pager[Chapter]:
         """Gets a :class:`.Pager` of chapters.
 
@@ -835,7 +837,7 @@ class MangadexClient:
         return Pager(routes["chapter_list"], Chapter, self, params=params, limit=limit)
 
     def get_authors(
-            self, *, name: Optional[str] = None, order: Optional[AuthorListOrder] = None, limit: Optional[int] = None
+        self, *, name: Optional[str] = None, order: Optional[AuthorListOrder] = None, limit: Optional[int] = None
     ) -> Pager[Author]:
         """Creates a :class:`.Pager` for authors.
 
@@ -869,24 +871,24 @@ class MangadexClient:
         return Pager(routes["author_list"], Author, self, params=params, limit=limit)
 
     def get_mangas(
-            self,
-            *,
-            title: Optional[str] = None,
-            authors: Optional[List[Union[str, Author]]] = None,
-            artists: Optional[List[Union[str, Author]]] = None,
-            year: Optional[int] = None,
-            included_tags: Optional[List[Union[str, Tag]]] = None,
-            included_tag_mode: TagMode = TagMode.AND,
-            excluded_tags: Optional[List[Union[str, Tag]]] = None,
-            excluded_tag_mode: TagMode = TagMode.OR,
-            status: Optional[List[MangaStatus]] = None,
-            languages: Optional[List[str]] = None,
-            demographic: Optional[List[Demographic]] = None,
-            rating: Optional[List[ContentRating]] = None,
-            created_after: Optional[datetime] = None,
-            updated_after: Optional[datetime] = None,
-            order: Optional[MangaListOrder] = None,
-            limit: Optional[int] = None,
+        self,
+        *,
+        title: Optional[str] = None,
+        authors: Optional[List[Union[str, Author]]] = None,
+        artists: Optional[List[Union[str, Author]]] = None,
+        year: Optional[int] = None,
+        included_tags: Optional[List[Union[str, Tag]]] = None,
+        included_tag_mode: TagMode = TagMode.AND,
+        excluded_tags: Optional[List[Union[str, Tag]]] = None,
+        excluded_tag_mode: TagMode = TagMode.OR,
+        status: Optional[List[MangaStatus]] = None,
+        languages: Optional[List[str]] = None,
+        demographic: Optional[List[Demographic]] = None,
+        rating: Optional[List[ContentRating]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        order: Optional[MangaListOrder] = None,
+        limit: Optional[int] = None,
     ) -> Pager[Manga]:
         """Gets a :class:`.Pager` of mangas.
 
@@ -1014,7 +1016,7 @@ class MangadexClient:
         conversion_map = {}
         enqueued = []
         for i in range(1000, len(ids), 1000):
-            enqueued.append(asyncio.create_task(self.convert_legacy(model, ids[i: i + 1000])))
+            enqueued.append(asyncio.create_task(self.convert_legacy(model, ids[i : i + 1000])))
         ids = ids[:1000]
         if enqueued:
             data = await asyncio.gather(*enqueued)
@@ -1099,7 +1101,9 @@ class MangadexClient:
             finish = datetime.utcnow()
             time_difference = int((finish - start).total_seconds() * 1000)
             try:
-                await asyncio.create_task(self.report_page(url, success, content_length, time_difference, cached))  # NOQA
+                await asyncio.create_task(
+                    self.report_page(url, success, content_length, time_difference, cached)
+                )  # NOQA
             except Exception:
                 pass
 

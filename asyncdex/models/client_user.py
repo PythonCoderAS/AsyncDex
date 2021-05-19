@@ -1,15 +1,18 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from .abc import GenericModelList, Model
-from .pager import Pager
+from .chapter import Chapter
 from .manga import Manga
+from .pager import Pager
+from .user import User
 from ..constants import routes
 from ..exceptions import PermissionMismatch
 from ..list_orders import MangaFeedListOrder
-from ..utils import copy_key_to_attribute, return_date_string
-from .user import User
-from .chapter import Chapter
+from ..utils import return_date_string
+
+if TYPE_CHECKING:
+    from ..client import MangadexClient
+
 
 class ClientUser(User):
     """A :class:`.User` representing the user of the client.
@@ -27,8 +30,7 @@ class ClientUser(User):
     permissions: List[str]
     """The permissions of the client user."""
 
-    def __init__(self, client: "MangadexClient", *, version: int = 0,
-                 data: Optional[Dict[str, Any]] = None):
+    def __init__(self, client: "MangadexClient", *, version: int = 0, data: Optional[Dict[str, Any]] = None):
         super().__init__(client, id="client-user", version=version, data=data)
         self.roles = []
         self.permissions = [
@@ -39,7 +41,7 @@ class ClientUser(User):
             "manga.list",
             "chapter.list",
             "author.list",
-            "scanlation_group.list"
+            "scanlation_group.list",
         ]  # These are the default perms for non-authenticated people.
 
     def permission_check(self, permission_name: str) -> bool:
@@ -91,13 +93,16 @@ class ClientUser(User):
         r.close()
         self.parse(data=json)
 
-    async def manga_chapters(self, *, languages: Optional[List[str]] = None, created_after: Optional[datetime] =
-    None,
-                             updated_after: Optional[datetime] = None,
-                             published_after: Optional[datetime] = None,
-                             order: Optional[MangaFeedListOrder] = None,
-                             limit: Optional[int] = None,
-                             ) -> Pager[Chapter]:
+    async def manga_chapters(
+        self,
+        *,
+        languages: Optional[List[str]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+        order: Optional[MangaFeedListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> Pager[Chapter]:
         """Get the chapters from the manga that the logged in user is following. Requires authentication.
 
         .. versionadded:: 0.5
@@ -149,8 +154,9 @@ class ClientUser(User):
             params["publishAtSince"] = return_date_string(published_after)
         self.client._add_order(params, order)
         self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_manga_chapters"])
-        return Pager(routes["logged_user_manga_chapters"], Chapter, self.client, params=params, limit=limit,
-                     limit_size=500)
+        return Pager(
+            routes["logged_user_manga_chapters"], Chapter, self.client, params=params, limit=limit, limit_size=500
+        )
 
     async def manga(self) -> Pager[Manga]:
         """Get the manga that the logged in user follows.

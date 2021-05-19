@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 from .abc import GenericModelList, Model
 from .mixins import DatetimeMixin

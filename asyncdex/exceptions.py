@@ -47,7 +47,14 @@ class HTTPException(AsyncDexException):
     response: aiohttp.ClientResponse
     """The :class:`aiohttp.ClientResponse` object from the request."""
 
-    def __init__(self, method: str, path: str, response: aiohttp.ClientResponse, *, msg: str = "HTTP Error on {method} for {path}."):
+    def __init__(
+        self,
+        method: str,
+        path: str,
+        response: aiohttp.ClientResponse,
+        *,
+        msg: str = "HTTP Error on {method} for {path}.",
+    ):
         super().__init__(msg.format(**locals()))
         self.path = path
         self.response = response
@@ -102,6 +109,7 @@ class InvalidID(AsyncDexException):
         super().__init__(f"There is no {model.__name__} with the UUID {id!r}.")
         self.id = id
         self.model = model
+
 
 class PermissionMismatch(HTTPException):
     """An exception raised if the current user does not have a certain permission.
