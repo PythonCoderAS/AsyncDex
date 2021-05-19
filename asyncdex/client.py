@@ -17,6 +17,7 @@ from .models.abc import Model
 from .models.author import Author
 from .models.chapter import Chapter
 from .models.client_user import ClientUser
+from .models.custom_list import CustomList
 from .models.group import Group
 from .models.manga import Manga
 from .models.pager import Pager
@@ -373,7 +374,8 @@ class MangadexClient:
         r.close()
         self.session_token = data["token"]["session"]
         self.refresh_token = data["token"]["refresh"]
-        await self.user.fetch()
+        if self.user.id == "client-user":
+            await self.user.fetch()
 
     async def login(self, username: Optional[str] = None, password: Optional[str] = None):
         """Logs in to the MangaDex API.
@@ -599,6 +601,22 @@ class MangadexClient:
         """
         return Group(self, id=id)
 
+    def get_list(self, id: str) -> CustomList:
+        """Get a custom list using it's ID.
+
+        .. versionadded:: 0.5
+
+        .. warning::
+            This method returns a **lazy** CustomList instance. Call :meth:`.CustomList.fetch` on the returned object to see
+            any values.
+
+        :param id: The custom list's UUID.
+        :type id: str
+        :return: A :class:`.CustomList` object.
+        :rtype: CustomList
+        """
+        return CustomList(self, id=id)
+
     # Batch models
 
     async def _do_batch(self, items: Tuple[Model, ...], permission: str, route_name: str):
@@ -633,7 +651,7 @@ class MangadexClient:
         :param authors: A tuple of all the authors (and artists) to update.
         :type authors: Tuple[Author, ...]
         """
-        await self._do_batch(authors, "author.list",  "author_list")
+        await self._do_batch(authors, "author.list", "author_list")
 
     async def batch_mangas(self, *mangas: Manga):
         """Updates a lot of mangas at once, reducing the time needed to update tens or hundreds of mangas.

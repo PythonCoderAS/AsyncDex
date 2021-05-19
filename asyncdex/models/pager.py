@@ -96,7 +96,8 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         if not self._started_parallel:
             self._started_parallel = True
             for item in json["results"]:
-                self._queue.append(self.model(self.client, data=item))
+                if item:
+                    self._queue.append(self.model(self.client, data=item))
             if json["total"] <= self.params["offset"] + self.params["limit"]:
                 self._done = True
             else:
@@ -164,6 +165,6 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         from .manga import Manga, MangaList
 
         if issubclass(self.model, Manga):
-            return MangaList(self.client, entries=(item async for item in self))
+            return MangaList(self.client, entries=[item async for item in self])
         else:
-            return GenericModelList(item async for item in self)
+            return GenericModelList([item async for item in self])

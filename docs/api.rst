@@ -35,6 +35,11 @@ Models
     :inherited-members:
     :special-members: __lt__, __le__, __gt__, __ge__, __str__, __eq__, __ne__, __hash__
 
+.. autoclass:: asyncdex.models.CustomList
+    :members:
+    :inherited-members:
+    :special-members: __str__, __eq__, __ne__, __hash__
+
 .. autoclass:: asyncdex.models.Group
     :members:
     :inherited-members:

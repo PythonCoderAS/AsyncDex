@@ -1,12 +1,12 @@
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, ForwardRef
 
 from .abc import Model
 from .mixins import DatetimeMixin
 from ..utils import DefaultAttrDict, copy_key_to_attribute
+from .manga import Manga, MangaList
 
 if TYPE_CHECKING:
     from ..client import MangadexClient
-    from .manga import Manga
 
 
 class Author(Model, DatetimeMixin):
@@ -27,15 +27,15 @@ class Author(Model, DatetimeMixin):
     biographies: DefaultAttrDict[Optional[str]]
     """A :class:`.DefaultAttrDict` holding the biographies of the author."""
 
-    mangas: List["Manga"]
-    """A list of all the mangas that the author has written.
+    mangas: MangaList
+    """A list of all the mangas that belong to the author.
     
     .. note::
         In order to efficiently get all mangas in one go, use:
         
         .. code-block:: python
         
-            await client.batch_mangas(*author.mangas)
+            await author.load_mangas()
     """
 
     def __init__(
@@ -46,7 +46,7 @@ class Author(Model, DatetimeMixin):
         version: int = 0,
         data: Optional[Dict[str, Any]] = None,
     ):
-        self.mangas = []
+        self.mangas = MangaList(self.client)
         self.biographies = DefaultAttrDict(default=lambda: None)
         super().__init__(client, id=id, version=version, data=data)
 
@@ -56,7 +56,7 @@ class Author(Model, DatetimeMixin):
             attributes = data["data"]["attributes"]
             copy_key_to_attribute(attributes, "name", self)
             copy_key_to_attribute(attributes, "imageUrl", self, "image")
-            if "biography" in attributes:
+            if "biography" in attributes and attributes["biography"]:
                 for item in attributes["biography"]:
                     for key, value in item.items():
                         self.biographies[key] = value

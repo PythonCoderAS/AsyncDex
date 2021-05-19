@@ -35,7 +35,7 @@ class Group(Model, DatetimeMixin):
             copy_key_to_attribute(
                 attributes, "leader", self, transformation=lambda attrib: User(self.client, data=attrib)
             )
-            if "members" in attributes:
+            if "members" in attributes and attributes["members"]:
                 self.members = GenericModelList(User(self.client, data=member) for member in attributes["members"])
             self._process_times(attributes)
         self._parse_relationships(data)

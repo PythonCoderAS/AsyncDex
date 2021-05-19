@@ -89,7 +89,7 @@ class Model(ABC):
         :return: Whether or not the models are equal.
         :rtype: bool
         """
-        if type(self) == type(other):
+        if isinstance(other, type(self)):
             return (self.id, self.version, self.client) == (other.id, other.version, other.client)
         return NotImplemented
 

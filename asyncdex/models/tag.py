@@ -52,7 +52,7 @@ class Tag(Model):
         super().parse(data)
         if "data" in data and "attributes" in data["data"]:
             attributes = data["data"]["attributes"]
-            if "name" in attributes:
+            if "name" in attributes and attributes["name"]:
                 for key, value in attributes["name"].items():
                     self.names[key] = value
         self._parse_relationships(data)

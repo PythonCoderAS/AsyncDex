@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .chapter import Chapter
+from .custom_list import CustomList
+from .group import Group
 from .manga import Manga
 from .pager import Pager
 from .user import User
@@ -93,7 +95,53 @@ class ClientUser(User):
         r.close()
         self.parse(data=json)
 
-    async def manga_chapters(
+    def groups(
+        self,
+        *,
+        limit: Optional[int] = None,
+    ) -> Pager[Group]:
+        """Get the groups that the logged in user follows.
+
+        .. versionadded:: 0.5
+
+        :param limit: Only return up to this many groups.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :raise: :class:`.Unauthorized` is there is no authentication.
+        :return: The group that the logged in user follows.
+        :rtype: Pager[Group]
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_groups"])
+        return Pager(routes["logged_user_groups"], Group, self.client, limit=limit)
+
+    def lists(
+        self,
+        *,
+        limit: Optional[int] = None,
+    ) -> Pager[CustomList]:
+        """Get the custom lists that the logged in user follows.
+
+        .. versionadded:: 0.5
+
+        :param limit: Only return up to this many custom lists.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :raise: :class:`.Unauthorized` is there is no authentication.
+        :return: The custom list that the logged in user follows.
+        :rtype: Pager[CustomList]
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_lists"])
+        return Pager(routes["logged_user_lists"], CustomList, self.client, limit=limit)
+
+    def manga_chapters(
         self,
         *,
         languages: Optional[List[str]] = None,
@@ -158,16 +206,51 @@ class ClientUser(User):
             routes["logged_user_manga_chapters"], Chapter, self.client, params=params, limit=limit, limit_size=500
         )
 
-    async def manga(self) -> Pager[Manga]:
+    def manga(
+        self,
+        *,
+        limit: Optional[int] = None,
+    ) -> Pager[Manga]:
         """Get the manga that the logged in user follows.
 
         .. versionadded:: 0.5
 
+        :param limit: Only return up to this many mangas.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :raise: :class:`.Unauthorized` is there is no authentication.
         :return: The manga that the logged in user follows.
         :rtype: Pager[Manga]
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_manga"])
-        return Pager(routes["logged_user_manga"], Manga, self.client)
+        return Pager(routes["logged_user_manga"], Manga, self.client, limit=limit)
+
+    def users(
+        self,
+        *,
+        limit: Optional[int] = None,
+    ) -> Pager[User]:
+        """Get the users that the logged in user follows.
+
+        .. versionadded:: 0.5
+
+        :param limit: Only return up to this many users.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :raise: :class:`.Unauthorized` is there is no authentication.
+        :return: The user that the logged in user follows.
+        :rtype: Pager[User]
+        """
+        self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_users"])
+        return Pager(routes["logged_user_users"], User, self.client, limit=limit)
 
     def __repr__(self) -> str:
         """Returns a string version of the model useful for development."""

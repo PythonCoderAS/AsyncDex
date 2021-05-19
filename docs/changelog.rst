@@ -26,9 +26,9 @@ Added
 * :meth:`.batch_manga_read`
 * :meth:`.ChapterList.get` has two new parameters: ``order`` and ``limit``.
 * :meth:`.get_new`
-* :meth:`.logged_user_chapter_chapters`
+* :meth:`.ClientUser.chapter_chapters`
 * :class:`.MangaFeedListOrder`
-* :meth:`.logged_user_manga`
+* :meth:`.ClientUser.manga`
 * :class:`.ModelList`
 * :class:`.GenericModelList`
 * :meth:`.ChapterList.fetch_all`
@@ -41,6 +41,8 @@ Added
 * :attr:`.MangadexClient.user`
 * :class:`.PermissionMismatch`
 * Added permission checks to various methods.
+* :class:`.CustomList`
+* :meth:`.get_list`
 
 Changed
 +++++++
@@ -71,6 +73,8 @@ Fixed
 
 * Fixed a bug in :class:`.Pager` where more items would be returned than the given limit.
 * Fixed a bug in :meth:`.PathRatelimit.update` that prevented a ratelimit from being applied correctly.
+* Fixed a bug in :meth:`.User.__eq__` that returned False when the ClientUser was the same user as a given user.
+* Fixed a bug in :meth:`.Manga.parse` where chapters without a description would cause an exception to be raised.
 
 v0.4
 ----

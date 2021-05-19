@@ -3,7 +3,6 @@ from typing import Any, Dict, Iterable, Optional, TYPE_CHECKING
 
 from .abc import GenericModelList, Model, ModelList
 from .aggregate import MangaAggregate
-from .author import Author
 from .chapter import ChapterList
 from .mixins import DatetimeMixin
 from .tag import Tag
@@ -14,6 +13,7 @@ from ..utils import DefaultAttrDict, copy_key_to_attribute
 
 if TYPE_CHECKING:
     from ..client import MangadexClient
+    from .author import Author
 
 
 class Manga(Model, DatetimeMixin):
@@ -67,7 +67,7 @@ class Manga(Model, DatetimeMixin):
     tags: GenericModelList[Tag]
     """A list of :class:`.Tag` objects that represent the manga's tags. A manga without tags will have an empty list."""
 
-    authors: GenericModelList[Author]
+    authors: GenericModelList["Author"]
     """A list of :class:`.Author` objects that represent the manga's authors.
     
     .. seealso:: :attr:`.artists`
@@ -76,7 +76,7 @@ class Manga(Model, DatetimeMixin):
         In order to efficiently get all authors and artists in one go, use :meth:`.load_authors`.
     """
 
-    artists: GenericModelList[Author]
+    artists: GenericModelList["Author"]
     """A list of :class:`.Author` objects that represent the manga's artists.
     
     .. seealso:: :attr:`.authors`
@@ -258,12 +258,12 @@ class Manga(Model, DatetimeMixin):
         super().parse(data)
         if "data" in data and "attributes" in data["data"]:
             attributes = data["data"]["attributes"]
-            if "title" in attributes:
+            if "title" in attributes and attributes["title"]:
                 self._process_titles(attributes["title"])
-            if "altTitles" in attributes:
+            if "altTitles" in attributes and attributes["altTitles"]:
                 for item in attributes["altTitles"]:
                     self._process_titles(item)
-            if "description" in attributes:
+            if "description" in attributes and attributes["description"]:
                 for key, value in attributes["description"].items():
                     self.descriptions[key] = value
             copy_key_to_attribute(attributes, "isLocked", self, "locked", default=False)
@@ -291,7 +291,7 @@ class Manga(Model, DatetimeMixin):
                 transformation=lambda attrib: ContentRating(attrib) if attrib else attrib,
             )
             self._process_times(attributes)
-            if "tags" in attributes:
+            if "tags" in attributes and attributes["tags"]:
                 for tag in attributes["tags"]:
                     assert tag["id"], "Tag ID missing"
                     tag_obj = Tag(self.client, data={"result": "ok", "data": tag})
