@@ -28,11 +28,13 @@ Added
 * :meth:`.get_new`
 * :meth:`.logged_user_chapter_chapters`
 * :class:`.MangaFeedListOrder`
+* :meth:`.logged_user_manga`
 
 Fixed
 +++++
 
 * Fixed a bug in :class:`.Pager` where more items would be returned than the given limit.
+* Fixed a bug in :meth:`.PathRatelimit.update` that prevented a ratelimit from being applied correctly.
 
 v0.4
 ----

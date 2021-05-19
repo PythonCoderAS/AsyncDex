@@ -1,10 +1,14 @@
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from logging import getLogger
+from math import ceil
 from re import Pattern
 from typing import Dict, Optional, Tuple
 
 import aiohttp
+
+logger = getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,9 @@ class PathRatelimit:
     """Analogous to :attr:`.Ratelimit.ratelimit_expires`"""
     ratelimit_used: int = field(default=0, init=False)
     """How many times the path has been called since the last ratelimit expire."""
+    ratelimit_enqueued: int = field(default=0, init=False)
+    """How many requests are currently sleeping. This is used to up the sleep time to prevent a number of requests 
+    more than double the ``ratelimit_time`` amount of requests."""
 
     def time_until_expire(self) -> timedelta:
         """Returns a :class:`datetime.timedelta` representing the amount of seconds for the ratelimit to expire."""
@@ -63,16 +70,18 @@ class PathRatelimit:
         :type response: aiohttp.ClientResponse
         """
         headers = response.headers
+        if self.ratelimit_expires == datetime.min:
+            self.ratelimit_expires = datetime.utcnow() + timedelta(seconds=self.ratelimit_time)
         if headers.get("x-ratelimit-limit", ""):
             self.ratelimit_amount = int(headers["x-ratelimit-limit"])
         if headers.get("x-ratelimit-retry-after", ""):
-            self.ratelimit_expires = datetime.utcfromtimestamp(int(headers["x-ratelimit-retry-after"]))
+            new_ratelimit = datetime.utcfromtimestamp(int(headers["x-ratelimit-retry-after"]))
+            if new_ratelimit > self.ratelimit_expires:
+                self.ratelimit_expires = new_ratelimit
         if headers.get("x-ratelimit-remaining", ""):
             self.ratelimit_used = self.ratelimit_amount - int(headers["x-ratelimit-remaining"])
         else:
             self.ratelimit_used += 1
-        if self.ratelimit_expires == datetime.min:
-            self.ratelimit_expires = datetime.utcnow() + timedelta(seconds=self.ratelimit_time)
 
 
 class Ratelimits:
@@ -89,6 +98,7 @@ class Ratelimits:
     def __init__(self, *ratelimits: PathRatelimit):
         self.ratelimit_dictionary = {}
         self._check_lock = asyncio.Lock()
+        self._enqueue_lock = asyncio.Lock()
         for item in ratelimits:
             self.add(item)
 
@@ -135,7 +145,8 @@ class Ratelimits:
                 return -1, ratelimit_obj
             if ratelimit_obj.can_call(method):
                 return -1, ratelimit_obj
-            return ratelimit_obj.time_until_expire().total_seconds(), ratelimit_obj
+            return ceil(ratelimit_obj.time_until_expire().total_seconds() + (ratelimit_obj.ratelimit_time * ((
+                    ratelimit_obj.ratelimit_enqueued // 60)) + 1)), ratelimit_obj
 
     async def sleep(self, url: str, method: str) -> Optional[PathRatelimit]:
         """Helper function that sleeps the amount of time returned by :meth:`.check`.
@@ -149,7 +160,12 @@ class Ratelimits:
         """
         time_to_sleep, retval = await self.check(url, method)
         if time_to_sleep > 0:
+            async with self._enqueue_lock:
+                retval.ratelimit_enqueued += 1
+            logger.warning("Sleeping for %s seconds.", time_to_sleep)
             await asyncio.sleep(time_to_sleep)
+            async with self._enqueue_lock:
+                retval.ratelimit_enqueued -= 1
         return retval
 
     def __repr__(self) -> str:

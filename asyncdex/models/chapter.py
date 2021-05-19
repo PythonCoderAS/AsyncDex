@@ -244,7 +244,7 @@ class Chapter(Model, DatetimeMixin):
             await self.fetch()
         pages = await self.pages(data_saver=use_data_saver, ssl_only=ssl_only)
         try:
-            items = await asyncio.gather(*[self.get_page(url) for url in pages])
+            items = await asyncio.gather(*[self.client.get_page(url) for url in pages])
         except ClientError:
             if retries > 0:
                 return await self.download_chapter(
@@ -259,6 +259,7 @@ class Chapter(Model, DatetimeMixin):
                 raise
         else:
             byte_list = await asyncio.gather(*[item.read() for item in items])
+            [item.close() for item in items]
             if as_bytes_list:
                 return byte_list  # NOQA: ignore; This is needed because for whatever reason PyCharm cannot guess the
                 # output of asyncio.gather()
@@ -369,6 +370,7 @@ class Chapter(Model, DatetimeMixin):
         self.client.raise_exception_if_not_authenticated(routes["read"])
         r = await self.client.request("POST", routes["read"].format(id=self.id))
         r.raise_for_status()
+        self.read = True
         r.close()
 
     async def mark_unread(self):
@@ -379,8 +381,9 @@ class Chapter(Model, DatetimeMixin):
         :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated(routes["read"])
-        r = await self.client.request("DEL", routes["read"].format(id=self.id))
+        r = await self.client.request("DELETE", routes["read"].format(id=self.id))
         r.raise_for_status()
+        self.read = False
         r.close()
 
     async def toggle_read(self):

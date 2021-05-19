@@ -232,12 +232,7 @@ class MangadexClient:
             if self.session_token is None:
                 await self.get_session_token()
             headers["Authorization"] = f"Bearer {self.session_token}"
-        if self.sleep_on_ratelimit:
-            path_obj = await self.ratelimits.sleep(remove_prefix(self.api_base, url), method)
-        else:
-            time_to_sleep, path_obj = await self.ratelimits.check(url, method)
-            if time_to_sleep > 0 and path_obj:
-                raise Ratelimit(path_obj.path.name, path_obj.ratelimit_amount, path_obj.ratelimit_expires)
+        path_obj = None
         if url.startswith(self.api_base):
             # We only want the ratelimit to only apply to the API urls.
             async with self._request_lock:
@@ -247,10 +242,17 @@ class MangadexClient:
                 time_difference = (time_now - self._request_second_start).total_seconds()
                 if time_difference <= 1.25 and self._request_count >= 5:  # Hopefully this will stop excess retries
                     # which cripple pagers.
-                    await asyncio.sleep(1)
+                    logger.warning("Sleeping for 1.25 seconds.")
+                    await asyncio.sleep(1.25)
                 elif time_difference > 1:
                     self._request_count = 0
                     self._request_second_start = time_now
+            if self.sleep_on_ratelimit:
+                path_obj = await self.ratelimits.sleep(remove_prefix(self.api_base, url), method)
+            else:
+                time_to_sleep, path_obj = await self.ratelimits.check(remove_prefix(self.api_base, url), method)
+                if time_to_sleep > 0 and path_obj:
+                    raise Ratelimit(path_obj.path.name, path_obj.ratelimit_amount, path_obj.ratelimit_expires)
         logger.info("Making %s request to %s", method, url)
         resp = await self.session.request(method, url, headers=headers, json=json, **session_request_kwargs)
         if path_obj:
@@ -270,13 +272,16 @@ class MangadexClient:
                     await resp.release()
         if resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
             if resp.headers.get("x-ratelimit-retry-after", ""):
-                await asyncio.sleep(
-                    (
+                diff = (
                             datetime.utcfromtimestamp(int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()
                     ).total_seconds()
+                logger.warning("Sleeping for %s seconds.", diff)
+                await asyncio.sleep(
+                    diff
                 )
             else:
-                await asyncio.sleep(1)  # This is probably the result of multiple devices, so sleep for a second. Will
+                logger.warning("Sleeping for 1.25 seconds.")
+                await asyncio.sleep(1.25)  # This is probably the result of multiple devices, so sleep for a second. Will
                 # give up on the 4th try though if it is persistent.
             do_retry = True
         if resp.status // 100 == 5:  # 5xx
@@ -560,8 +565,10 @@ class MangadexClient:
                                   published_after: Optional[datetime] = None,
                                   order: Optional[MangaFeedListOrder] = None,
                                   limit: Optional[int] = None,
-                                  ) -> Pager[Manga]:
+                                  ) -> Pager[Chapter]:
         """Get the chapters from the manga that the logged in user is following. Requires authentication.
+
+        .. versionadded:: 0.5
 
         :param languages: The languages to filter by.
         :type languages: List[str]
@@ -609,7 +616,19 @@ class MangadexClient:
         if published_after:
             params["publishAtSince"] = return_date_string(published_after)
         self._add_order(params, order)
+        self.raise_exception_if_not_authenticated(routes["logged_user_manga_chapters"])
         return Pager(routes["logged_user_manga_chapters"], Chapter, self, params=params, limit=limit, limit_size=500)
+
+    def logged_user_manga(self) -> Pager[Manga]:
+        """Get the manga that the logged in user follows.
+
+        .. versionadded:: 0.5
+
+        :return: The manga that the logged in user follows.
+        :rtype: Pager[Manga]
+        """
+        self.raise_exception_if_not_authenticated(routes["logged_user_manga"])
+        return Pager(routes["logged_user_manga"], Manga, self)
 
     def get_group(self, id: str) -> Group:
         """Get a group using it's ID.
@@ -1088,7 +1107,7 @@ class MangadexClient:
         :param cached: Whether or not the request was cached (The ``X-Cache`` header starting with the value ``HIT``).
         :type cached: bool
         """
-        await self.request(
+        r = await self.request(
             "POST",
             routes["report_page"],
             json={
@@ -1099,6 +1118,7 @@ class MangadexClient:
                 "cached": cached,
             },
         )
+        r.close()
 
     async def get_page(self, url: str) -> aiohttp.ClientResponse:
         """A method to download one page of a chapter, using the URLs from :meth:`.pages`. This method is more
@@ -1113,7 +1133,7 @@ class MangadexClient:
         """
         start = datetime.utcnow()
         try:
-            r = await self.request("GET", url)
+            r = await self.request("GET", url, retries=1)
             content_length = len(await r.read())
         except Exception:
             success = False
@@ -1128,7 +1148,10 @@ class MangadexClient:
         finally:
             finish = datetime.utcnow()
             time_difference = int((finish - start).total_seconds() * 1000)
-            asyncio.create_task(self.report_page(url, success, content_length, time_difference, cached))  # NOQA
+            try:
+                await asyncio.create_task(self.report_page(url, success, content_length, time_difference, cached))  # NOQA
+            except Exception:
+                pass
 
     async def close(self):
         """Close the client.
