@@ -40,6 +40,7 @@ Added
 * :class:`.ClientUser`
 * :attr:`.MangadexClient.user`
 * :class:`.PermissionMismatch`
+* Added permission checks to various methods.
 
 Changed
 +++++++

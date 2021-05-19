@@ -347,7 +347,7 @@ class Chapter(Model, DatetimeMixin):
         )
 
     async def fetch(self):
-        await self._fetch("chapter")
+        await self._fetch("chapter.view", "chapter")
 
     async def load_groups(self):
         """Shortcut method that calls :meth:`.Client.batch_groups` with the groups that belong to the group.

@@ -409,6 +409,7 @@ class MangadexClient:
             (await self.request("POST", routes["logout"])).release()
         self.username = self.password = self.refresh_token = self.session_token = None
         self.anonymous_mode = True
+        self.user = ClientUser(self)
 
     # Methods to get models
 
@@ -600,7 +601,8 @@ class MangadexClient:
 
     # Batch models
 
-    async def _do_batch(self, items: Tuple[Model, ...], route_name: str):
+    async def _do_batch(self, items: Tuple[Model, ...], permission: str, route_name: str):
+        self.user.permission_exception(permission, "GET", routes[route_name])
         uuid_map: Dict[str, List[Model]] = {}
         for item in items:
             uuid_map.setdefault(item.id, []).append(item)
@@ -631,7 +633,7 @@ class MangadexClient:
         :param authors: A tuple of all the authors (and artists) to update.
         :type authors: Tuple[Author, ...]
         """
-        await self._do_batch(authors, "author_list")
+        await self._do_batch(authors, "author.list",  "author_list")
 
     async def batch_mangas(self, *mangas: Manga):
         """Updates a lot of mangas at once, reducing the time needed to update tens or hundreds of mangas.
@@ -641,7 +643,7 @@ class MangadexClient:
         :param mangas: A tuple of all the mangas to update.
         :type mangas: Tuple[Manga, ...]
         """
-        await self._do_batch(mangas, "search")
+        await self._do_batch(mangas, "manga.list", "search")
 
     async def batch_chapters(self, *chapters: Chapter):
         """Updates a lot of chapters at once, reducing the time needed to update tens or hundreds of chapters.
@@ -653,7 +655,7 @@ class MangadexClient:
         :param chapters: A tuple of all the chapters to update.
         :type chapters: Tuple[Chapter, ...]
         """
-        await self._do_batch(chapters, "chapter_list")
+        await self._do_batch(chapters, "chapter.list", "chapter_list")
 
     async def batch_groups(self, *groups: Group):
         """Updates a lot of groups at once, reducing the time needed to update tens or hundreds of groups.
@@ -663,7 +665,7 @@ class MangadexClient:
         :param groups: A tuple of all the groups to update.
         :type groups: Tuple[Group, ...]
         """
-        await self._do_batch(groups, "group_list")
+        await self._do_batch(groups, "scanlation_group.list", "group_list")
 
     async def batch_manga_read(self, *mangas: Manga):
         """Find the read status for multiple mangas.
@@ -729,6 +731,7 @@ class MangadexClient:
         if name:
             params["name"] = name.replace(" ", "+")
         self._add_order(params, order)
+        self.user.permission_exception("scanlation_group.list", "GET", routes["group_list"])
         return Pager(routes["group_list"], Group, self, params=params, limit=limit)
 
     def get_chapters(
@@ -834,6 +837,7 @@ class MangadexClient:
         if published_after:
             params["publishAtSince"] = return_date_string(published_after)
         self._add_order(params, order)
+        self.user.permission_exception("chapter.list", "GET", routes["chapter_list"])
         return Pager(routes["chapter_list"], Chapter, self, params=params, limit=limit)
 
     def get_authors(
@@ -868,6 +872,7 @@ class MangadexClient:
         if name:
             params["name"] = name.replace(" ", "+")
         self._add_order(params, order)
+        self.user.permission_exception("author.list", "GET", routes["author_list"])
         return Pager(routes["author_list"], Author, self, params=params, limit=limit)
 
     def get_mangas(
@@ -980,6 +985,7 @@ class MangadexClient:
         if updated_after:
             params["updatedAtSince"] = return_date_string(updated_after)
         self._add_order(params, order)
+        self.user.permission_exception("manga.list", "GET", routes["search"])
         return Pager(routes["search"], Manga, self, params=params, limit=limit)
 
     search = get_mangas

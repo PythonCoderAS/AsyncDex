@@ -56,4 +56,4 @@ class Group(Model, DatetimeMixin):
         await self.client.batch_chapters(*self.chapters)
 
     async def fetch(self):
-        await self._fetch("group")
+        await self._fetch("scanlation_group.view", "group")

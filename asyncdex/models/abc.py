@@ -127,7 +127,9 @@ class Model(ABC):
         if r.status == 404:
             raise InvalidID(self.id, type(self))
 
-    async def _fetch(self, route_name: str):
+    async def _fetch(self, permission: Optional[str], route_name: str):
+        if permission:
+            self.client.user.permission_exception(permission, "GET", routes[route_name])
         r = await self.client.request("GET", routes[route_name].format(id=self.id))
         self._check_404(r)
         self.parse(await r.json())

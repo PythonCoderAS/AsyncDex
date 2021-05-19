@@ -64,7 +64,7 @@ class Author(Model, DatetimeMixin):
             self._parse_relationships(data)
 
     async def fetch(self):
-        await self._fetch("author")
+        await self._fetch("author.view", "author")
 
     async def load_mangas(self):
         """Shortcut method that calls :meth:`.Client.batch_mangas` with the mangas that belong to the author.

@@ -42,4 +42,4 @@ class User(Model):
         await self.client.batch_chapters(*self.chapters)
 
     async def fetch(self):
-        await self._fetch("user")
+        await self._fetch(None, "user")
