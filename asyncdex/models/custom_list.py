@@ -9,7 +9,7 @@ from ..enum import Visibility
 from ..utils import copy_key_to_attribute
 
 
-class CustomList(Model, DatetimeMixin):
+class CustomList(Model):
     """A :class:`.Model` representing a custom list.
 
     .. versionadded:: 0.5
