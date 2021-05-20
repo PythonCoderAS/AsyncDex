@@ -65,6 +65,10 @@ class Author(Model, DatetimeMixin):
             self._parse_relationships(data)
 
     async def fetch(self):
+        """Fetch data about the author. |permission| ``author.view``
+
+        :raises: :class:`.InvalidID` if an author with the ID does not exist.
+        """
         await self._fetch("author.view", "author")
 
     async def load_mangas(self):
@@ -79,7 +83,7 @@ class Author(Model, DatetimeMixin):
         await self.client.batch_mangas(*self.mangas)
 
     async def update(self):
-        """Update the author.
+        """Update the author. |auth|
 
         .. versionadded:: 0.5
         """
@@ -94,7 +98,7 @@ class Author(Model, DatetimeMixin):
         self.transfer(obj)
 
     async def delete(self):
-        """Delete the author.
+        """Delete the author. |auth|
 
         .. versionadded:: 0.5
         """

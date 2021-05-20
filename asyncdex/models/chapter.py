@@ -340,6 +340,10 @@ class Chapter(Model, DatetimeMixin):
         )
 
     async def fetch(self):
+        """Fetch data about the chapter. |permission| ``chapter.view``
+
+        :raises: :class:`.InvalidID` if a chapter with the ID does not exist.
+        """
         await self._fetch("chapter.view", "chapter")
 
     async def load_groups(self):
@@ -354,11 +358,9 @@ class Chapter(Model, DatetimeMixin):
         await self.client.batch_groups(*self.groups)
 
     async def mark_read(self):
-        """Mark the chapter as read. Requires authentication.
+        """Mark the chapter as read. |auth|
 
         .. versionadded:: 0.5
-
-        :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["read"])
         r = await self.client.request("POST", routes["read"].format(id=self.id))
@@ -366,11 +368,9 @@ class Chapter(Model, DatetimeMixin):
         r.close()
 
     async def mark_unread(self):
-        """Mark the chapter as unread. Requires authentication.
+        """Mark the chapter as unread. |auth|
 
         .. versionadded:: 0.5
-
-        :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["read"])
         r = await self.client.request("DELETE", routes["read"].format(id=self.id))

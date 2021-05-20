@@ -7,12 +7,15 @@ Getting Started
 ...............
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   quickstart
-   changelog
-   api
+    quickstart
+    authentication
+    permissions
+    changelog
+    api
 
-Indices
-.......
+API & Indices
+.............
+
 * :ref:`genindex`

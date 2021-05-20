@@ -47,6 +47,11 @@ intersphinx_mapping = {
     "discord": ("https://discordpy.readthedocs.io/en/stable/", None),
 }
 
+rst_prolog = """
+.. |auth| replace:: :ref:`This method requires authentication with the MangaDex API <authentication>`.
+.. |permission| replace:: This method requires the following :ref:`permission <permission>`:
+"""
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

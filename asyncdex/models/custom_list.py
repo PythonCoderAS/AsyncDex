@@ -1,11 +1,15 @@
-from typing import Any, Dict
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from .abc import Model
 from .manga_list import MangaList
+from .pager import Pager
 from .user import User
+from .chapter import Chapter
 from ..constants import routes
 from ..enum import Visibility
-from ..utils import copy_key_to_attribute
+from ..list_orders import MangaFeedListOrder
+from ..utils import copy_key_to_attribute, return_date_string
 
 
 class CustomList(Model):
@@ -45,6 +49,7 @@ class CustomList(Model):
             self._parse_relationships(data)
 
     async def fetch(self):
+        """Fetch data about the list. |auth|"""
         self.client.raise_exception_if_not_authenticated("GET", routes["list"])
         await self._fetch(None, "list")
 
@@ -58,3 +63,67 @@ class CustomList(Model):
             await client.batch_mangas(*author.mangas)
         """
         await self.client.batch_mangas(*self.mangas)
+
+    def manga_chapters(
+        self,
+        *,
+        languages: Optional[List[str]] = None,
+        created_after: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+        order: Optional[MangaFeedListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> Pager[Chapter]:
+        """Get the chapters from the manga in the custom list. |auth|
+
+        .. versionadded:: 0.5
+
+        :param languages: The languages to filter by.
+        :type languages: List[str]
+        :param created_after: Get chapters created after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type created_after: datetime
+        :param updated_after: Get chapters updated after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type updated_after: datetime
+        :param published_after: Get chapters published after this date.
+
+            .. note::
+                The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
+                aware.
+
+        :type published_after: datetime
+        :param order: The order to sort the chapters.
+        :type order: MangaFeedListOrder
+        :param limit: Only return up to this many chapters.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :return: A Pager with the chapters.
+        :rtype: Pager[Chapter]
+        """
+        params = {}
+        if languages:
+            params["locales"] = languages
+        if created_after:
+            params["createdAtSince"] = return_date_string(created_after)
+        if updated_after:
+            params["updatedAtSince"] = return_date_string(updated_after)
+        if published_after:
+            params["publishAtSince"] = return_date_string(published_after)
+        self.client._add_order(params, order)
+        self.client.raise_exception_if_not_authenticated("GET", routes["list_feed"])
+        return Pager(
+            routes["list_feed"].format(id=self.id), Chapter, self.client, params=params, limit=limit, limit_size=500
+        )

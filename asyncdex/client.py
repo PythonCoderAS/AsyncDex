@@ -412,14 +412,30 @@ class MangadexClient:
         self.refresh_token = data["token"]["refresh"]
         await self.user.fetch()
 
-    async def logout(self):
-        """Log out from the API. If a refresh token exists, calls the logout route on the API. The username and
-        password are cleared, and the client is put into anonymous mode."""
-        if self.refresh_token or self.session_token:
+    async def logout(self, delete_tokens: bool = True, clear_login_info: bool = True):
+        """Log out from the API.
+
+        :param delete_tokens: Whether or not to delete the refresh/session tokens by calling the logout endpoint.
+            Defaults to true.
+
+            .. versionadded:: 0.5
+
+        :type delete_tokens: bool
+        :param clear_login_info: Whether or not to clear login info from the client, so that future logins are not
+            possible without a new token or calling :meth:`.login` with the ``username`` and ``password`` parameters.
+            Defaults to true.
+
+            .. versionadded:: 0.5
+
+        :type clear_login_info: bool
+        """
+        if (self.refresh_token or self.session_token) and delete_tokens:
             (await self.request("POST", routes["logout"])).release()
-        self.username = self.password = self.refresh_token = self.session_token = None
-        self.anonymous_mode = True
-        self.user = ClientUser(self)
+            self.refresh_token = self.session_token = None
+        if clear_login_info:
+            self.username = self.password = self.refresh_token = self.session_token = None
+            self.anonymous_mode = True
+            self.user = ClientUser(self)
 
     # Methods to get models
 
@@ -654,6 +670,7 @@ class MangadexClient:
 
     async def batch_authors(self, *authors: Author):
         """Updates a lot of authors at once, reducing the time needed to update tens or hundreds of authors.
+        |permission| ``author.list``
 
         .. versionadded:: 0.2
 
@@ -664,6 +681,7 @@ class MangadexClient:
 
     async def batch_mangas(self, *mangas: Manga):
         """Updates a lot of mangas at once, reducing the time needed to update tens or hundreds of mangas.
+        |permission| ``manga.list``
 
         .. versionadded:: 0.2
 
@@ -674,6 +692,7 @@ class MangadexClient:
 
     async def batch_chapters(self, *chapters: Chapter):
         """Updates a lot of chapters at once, reducing the time needed to update tens or hundreds of chapters.
+        |permission| ``chapter.list``
 
         .. versionadded:: 0.3
 
@@ -686,6 +705,7 @@ class MangadexClient:
 
     async def batch_groups(self, *groups: Group):
         """Updates a lot of groups at once, reducing the time needed to update tens or hundreds of groups.
+        |permission| ``scanlation_group.list``
 
         .. versionadded:: 0.3
 
@@ -695,7 +715,7 @@ class MangadexClient:
         await self._do_batch(groups, "scanlation_group.list", "group_list")
 
     async def batch_manga_read(self, *mangas: Manga):
-        """Find the read status for multiple mangas.
+        """Find the read status for multiple mangas. |auth|
 
         .. versionadded:: 0.5
 
@@ -703,6 +723,7 @@ class MangadexClient:
         :type mangas: Tuple[Manga, ...]
         """
         # We can't use _do_batch here unfortunately.
+        self.raise_exception_if_not_authenticated("GET", routes["batch_manga_read"])
         final_data = []
         manga_list = list({manga.id for manga in mangas})
         while manga_list:
@@ -728,7 +749,7 @@ class MangadexClient:
     def get_groups(
         self, *, name: Optional[str] = None, order: Optional[GroupListOrder] = None, limit: Optional[int] = None
     ) -> Pager[Group]:
-        """Creates a :class:`.Pager` for groups.
+        """Creates a :class:`.Pager` for groups. |permission| ``scanlation_group.list``
 
         .. versionadded:: 0.4
 
@@ -776,7 +797,7 @@ class MangadexClient:
         order: Optional[ChapterListOrder] = None,
         limit: Optional[int] = None,
     ) -> Pager[Chapter]:
-        """Gets a :class:`.Pager` of chapters.
+        """Gets a :class:`.Pager` of chapters. |permission| ``chapter.list``
 
         .. versionadded:: 0.4
 
@@ -869,7 +890,7 @@ class MangadexClient:
     def get_authors(
         self, *, name: Optional[str] = None, order: Optional[AuthorListOrder] = None, limit: Optional[int] = None
     ) -> Pager[Author]:
-        """Creates a :class:`.Pager` for authors.
+        """Creates a :class:`.Pager` for authors. |permission| ``author.list``
 
         .. versionadded:: 0.4
 
@@ -921,7 +942,7 @@ class MangadexClient:
         order: Optional[MangaListOrder] = None,
         limit: Optional[int] = None,
     ) -> Pager[Manga]:
-        """Gets a :class:`.Pager` of mangas.
+        """Gets a :class:`.Pager` of mangas. |permission| ``manga.list``
 
         .. versionadded:: 0.4
 
@@ -1020,7 +1041,7 @@ class MangadexClient:
     # Create methods
 
     async def create_author(self, name: str) -> Author:
-        """Create a new author.
+        """Create a new author. |auth| |permission| ``author.create``
 
         .. versionadded:: 0.5
 
@@ -1036,6 +1057,30 @@ class MangadexClient:
         json = await r.json()
         r.close()
         return Author(self, data=json)
+
+    async def create_group(self, name: str, members: Optional[List[User]], *, leader: Optional[User] = None) -> Group:
+        """Create a scanlation group. |auth| |permission| ``scanlation_group.create``
+
+        .. versionadded:: 0.5
+
+        :param name: The name of the group.
+        :type name: str
+        :param members: The members of the group.
+        :type members: List[User]
+        :param leader: The leader of the group. Defaults to the logged in user.
+        :type leader: User
+        :return: A new group.
+        :rtype: Group
+        """
+        leader = leader or self.user
+        params = {"name": name, "members": [item.id for item in members], "leader": leader.id}
+        self.raise_exception_if_not_authenticated("POST", routes["group_list"])
+        self.user.permission_exception("scanlation_group.create", "POST", routes["group_list"])
+        r = await self.request("POST", routes["group_list"], json=params)
+        json = await r.json()
+        r.close()
+        return Group(self, data=json)
+
 
     async def create_manga(
         self,
@@ -1056,7 +1101,7 @@ class MangadexClient:
         notes: Optional[str] = None,
         all_titles: Optional[Dict[str, TitleList]] = None,
     ) -> Manga:
-        """Create a manga.
+        """Create a manga. |auth| |permission| ``manga.create``
 
         .. versionadded:: 0.5
 
@@ -1074,7 +1119,7 @@ class MangadexClient:
         :param all_titles: A dictionary of a language code key and a :class:`.TitleList` as values.
 
             .. warning:: Using ``title`` and ``all_titles`` will overwrite any values in the dictionary provided to
-                ``title`` if a correspodning title for the same language code is found in ``all_titles``.
+                ``title`` if a corresponding title for the same language code is found in ``all_titles``.
 
             .. admonition:: Using ``all_titles`` to set titles:
 

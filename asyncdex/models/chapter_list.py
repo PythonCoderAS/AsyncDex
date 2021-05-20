@@ -731,6 +731,7 @@ class ChapterList(ModelList["Chapter"]):
 
     async def get_read(self):
         """Gets the list of chapters which are read. Chapters whose IDs are found in this list will be set as read.
+        |auth|
 
         .. versionadded:: 0.5
         """

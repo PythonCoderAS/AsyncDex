@@ -23,12 +23,10 @@ Make a request for a random manga and print the authors of the manga:
     print(f"Author of {manga.titles.en.primary}: {manga.authors[0].name}")
 
 
-Log in to your MangaDex account:
+Log in to your MangaDex account (see :ref:`authentication` for other authentication options):
 
 .. code-block:: python
 
-    await client.login(username="yourusername", password="yourpassword")
-    # alternate method
     client = MangadexClient(username="yourusername", password="yourpassword")
     await client.login()
 
@@ -36,7 +34,5 @@ View your manga follows list:
 
 .. code-block:: python
 
-    response = await client.request("GET", "/user/follows/manga")
-    json = await response.json()
-    response.close()
-    [print(item["data"]["id"]) for item in json["results"]]
+    async for item in self.user.manga():
+        print(item.titles.first().primary)

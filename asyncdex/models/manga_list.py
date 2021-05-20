@@ -27,10 +27,7 @@ class MangaList(ModelList["Manga"]):
         return await self.client.batch_mangas(*self)
 
     async def get_reading_status(self):
-        """Get the reading status of all manga in the list. Requires authentication.
-
-        :raises: :class:`.Unauthorized` is authentication is missing.
-        """
+        """Get the reading status of all manga in the list. |auth|"""
         self.client.raise_exception_if_not_authenticated("GET", routes["logged_user_manga_status"])
         r = await self.client.request("GET", routes["logged_user_manga_status"])
         json = await r.json()

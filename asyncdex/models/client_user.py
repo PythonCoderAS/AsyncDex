@@ -77,16 +77,19 @@ class ClientUser(User):
             raise PermissionMismatch(permission_name, method, path, None)
 
     async def fetch(self):
+        """Fetch data about the client user."""
         r = await self.client.request("GET", routes["auth_check"])
         json = await r.json()
         r.close()
+        if not json["isAuthenticated"]:
+            await self.client.logout(delete_tokens=False)
         self.roles = json["roles"]
         self.permissions = json["permissions"]
         if not self.client.anonymous_mode:
             await self.fetch_user()
 
     async def fetch_user(self):
-        """Fetch data about the client user from MangaDex servers. This will get the user's UUID."""
+        """Fetch data about the client user from MangaDex servers. This will get the user's UUID. |auth|"""
         self.client.raise_exception_if_not_authenticated("GET", routes["logged_in_user"])
         r = await self.client.request("GET", routes["logged_in_user"])
         json = await r.json()
@@ -98,7 +101,7 @@ class ClientUser(User):
         *,
         limit: Optional[int] = None,
     ) -> Pager[Group]:
-        """Get the groups that the logged in user follows.
+        """Get the groups that the logged in user follows. |auth|
 
         .. versionadded:: 0.5
 
@@ -121,7 +124,7 @@ class ClientUser(User):
         *,
         limit: Optional[int] = None,
     ) -> Pager[CustomList]:
-        """Get the custom lists that the logged in user follows.
+        """Get the custom lists that the logged in user follows. |auth|
 
         .. versionadded:: 0.5
 
@@ -149,13 +152,13 @@ class ClientUser(User):
         order: Optional[MangaFeedListOrder] = None,
         limit: Optional[int] = None,
     ) -> Pager[Chapter]:
-        """Get the chapters from the manga that the logged in user is following. Requires authentication.
+        """Get the chapters from the manga that the logged in user is following. |auth|
 
         .. versionadded:: 0.5
 
         :param languages: The languages to filter by.
         :type languages: List[str]
-                :param created_after: Get chapters created after this date.
+        :param created_after: Get chapters created after this date.
 
             .. note::
                 The datetime object needs to be in UTC time. It does not matter if the datetime if naive or timezone
@@ -185,7 +188,6 @@ class ClientUser(User):
                 Pager making more requests than necessary, consuming ratelimits.
 
         :type limit: int
-        :raise: :class:`.Unauthorized` is there is no authentication.
         :return: A Pager with the chapters.
         :rtype: Pager[Chapter]
         """
@@ -209,7 +211,7 @@ class ClientUser(User):
         *,
         limit: Optional[int] = None,
     ) -> Pager[Manga]:
-        """Get the manga that the logged in user follows.
+        """Get the manga that the logged in user follows. |auth|
 
         .. versionadded:: 0.5
 
@@ -232,7 +234,7 @@ class ClientUser(User):
         *,
         limit: Optional[int] = None,
     ) -> Pager[User]:
-        """Get the users that the logged in user follows.
+        """Get the users that the logged in user follows. |auth|
 
         .. versionadded:: 0.5
 

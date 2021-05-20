@@ -26,7 +26,7 @@ Added
 * :meth:`.batch_manga_read`
 * :meth:`.ChapterList.get` has two new parameters: ``order`` and ``limit``.
 * :meth:`.get_new`
-* :meth:`.ClientUser.chapter_chapters`
+* :meth:`.ClientUser.manga_chapters`
 * :class:`.MangaFeedListOrder`
 * :meth:`.ClientUser.manga`
 * :class:`.ModelList`
@@ -56,6 +56,11 @@ Added
 * :meth:`.create_author`
 * :meth:`.Author.update`
 * :meth:`.Author.delete`
+* :meth:`.Group.update`
+* :meth:`.Group.delete`
+* :meth:`.create_group`
+* :meth:`.CustomList.manga_chapters`
+* Two new parameters on :meth:`.logout`: ``delete_tokens`` and ``clear_login_info``
 
 Changed
 +++++++

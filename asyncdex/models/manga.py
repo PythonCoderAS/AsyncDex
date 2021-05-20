@@ -562,6 +562,10 @@ class Manga(Model, DatetimeMixin):
             self.chapters = ChapterList(self)
 
     async def fetch(self):
+        """Fetch data about the manga. |permission| ``manga.view``
+
+        :raises: :class:`.InvalidID` if a manga with the ID does not exist.
+        """
         await self._fetch("manga.view", "manga")
 
     async def load_authors(self):
@@ -590,11 +594,9 @@ class Manga(Model, DatetimeMixin):
         return ma
 
     async def get_reading_status(self):
-        """Gets the manga's reading status. Requires authentication.
+        """Gets the manga's reading status. |auth|
 
         .. versionadded:: 0.5
-
-        :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["manga_read_status"])
         r = await self.client.request("GET", routes["manga_read_status"].format(id=self.id))
@@ -603,13 +605,12 @@ class Manga(Model, DatetimeMixin):
         self.reading_status = FollowStatus(json["status"]) if json["status"] else None
 
     async def set_reading_status(self, status: Optional[FollowStatus]):
-        """Sets the manga's reading status. Requires authentication.
+        """Sets the manga's reading status. |auth|
 
         .. versionadded:: 0.5
 
         :param status: The new status to set. Can be None to remove reading status.
         :type status: Optional[FollowStatus]
-        :raises: :class:`.Unauthorized` is authentication is missing.
         """
         self.client.raise_exception_if_not_authenticated("GET", routes["manga_read_status"])
         r = await self.client.request(
@@ -640,7 +641,7 @@ class Manga(Model, DatetimeMixin):
         return object.__getattribute__(self, item)
 
     async def update(self, notes: Optional[str]):
-        """Update the manga using values from the class.
+        """Update the manga using values from the class. |auth|
 
         .. versionadded:: 0.5
 
@@ -711,14 +712,14 @@ class Manga(Model, DatetimeMixin):
         self.transfer(manga_obj)
 
     async def delete(self):
-        """Delete the manga.
+        """Delete the manga. |auth|
 
         .. versionadded:: 0.5
         """
         return await self._delete("manga")
 
     async def add_to_list(self, custom_list: CustomList):
-        """Add the manga to the custom list.
+        """Add the manga to the custom list. |auth|
 
         .. versionadded:: 0.5
 
@@ -731,7 +732,7 @@ class Manga(Model, DatetimeMixin):
             custom_list.mangas.append(self)
 
     async def remove_from_list(self, custom_list: CustomList):
-        """Remove the manga from the custom list.
+        """Remove the manga from the custom list. |auth|
 
         .. versionadded:: 0.5
 
@@ -744,7 +745,7 @@ class Manga(Model, DatetimeMixin):
             custom_list.mangas.remove(self)
 
     async def follow(self):
-        """Follow the manga.
+        """Follow the manga. |auth|
 
         .. versionadded:: 0.5
         """
@@ -752,7 +753,7 @@ class Manga(Model, DatetimeMixin):
         (await self.client.request("POST", routes["manga_follow"].format(id=self.id))).close()
 
     async def unfollow(self):
-        """Unfollow the manga.
+        """Unfollow the manga. |auth|
 
         .. versionadded:: 0.5
         """
