@@ -19,9 +19,10 @@ from .models.chapter import Chapter
 from .models.client_user import ClientUser
 from .models.custom_list import CustomList
 from .models.group import Group
-from .models.manga import Manga
+from .models.manga import Manga, MangaLinks
 from .models.pager import Pager
 from .models.tag import Tag, TagDict
+from .models.title import TitleList
 from .models.user import User
 from .ratelimit import Ratelimits
 from .utils import remove_prefix, return_date_string
@@ -180,6 +181,7 @@ class MangadexClient:
         json: Any = None,
         with_auth: bool = True,
         retries: int = 3,
+        allow_non_successful_codes: bool = False,
         **session_request_kwargs,
     ) -> aiohttp.ClientResponse:
         """Perform a request.
@@ -216,9 +218,14 @@ class MangadexClient:
         :param retries: The amount of times to retry. The function will recursively call itself, subtracting ``1``
             from the original count until retries run out.
         :type retries: int
+        :param allow_non_successful_codes: Whether or not to allow non-success codes (4xx codes that aren't 401/429)
+            to pass through instead of raising an error. False by default
+        :type allow_non_successful_codes: bool
         :param session_request_kwargs: Optional keyword arguments to pass to :meth:`aiohttp.ClientSession.request`.
         :raises: :class:`.Unauthorized` if the endpoint requires authentication and sufficient parameters for
             authentication were not provided to the client.
+        :raises: :class`aiohttp.ClientResponseError` if the response is a 4xx or 5xx code after multiple retries or
+            if it will not be retried and ``allow_non_successful_codes`` is False.
         :return: The response.
         :rtype: aiohttp.ClientResponse
         """
@@ -303,6 +310,8 @@ class MangadexClient:
                 )
             else:
                 resp.raise_for_status()
+        elif not allow_non_successful_codes:
+            resp.raise_for_status()
         return resp
 
     async def _one_off(self, method, url, *, params=None, json=None, with_auth=True, retries=3, **kwargs):
@@ -313,7 +322,6 @@ class MangadexClient:
     async def _get_json(self, method, url, *, params=None, json=None, with_auth=True, retries=3, **kwargs):
         """Used for getting the json quickly when we don't care about request codes."""
         r = await self.request(method, url, params=params, json=json, with_auth=with_auth, retries=retries, **kwargs)
-        r.raise_for_status()
         json = await r.json()
         r.close()
         return json
@@ -607,7 +615,8 @@ class MangadexClient:
         .. versionadded:: 0.5
 
         .. warning::
-            This method returns a **lazy** CustomList instance. Call :meth:`.CustomList.fetch` on the returned object to see
+            This method returns a **lazy** CustomList instance. Call :meth:`.CustomList.fetch` on the returned object
+            to see
             any values.
 
         :param id: The custom list's UUID.
@@ -700,7 +709,6 @@ class MangadexClient:
             batch = manga_list[:100]
             manga_list = manga_list[100:]
             r = await self.request("GET", routes["batch_manga_read"], params={"ids": batch})
-            r.raise_for_status()
             json = await r.json()
             r.close()
             final_data.extend(json["data"])
@@ -1009,6 +1017,130 @@ class MangadexClient:
     search = get_mangas
     """Alias for :meth:`.get_mangas`."""
 
+    # Create methods
+
+    async def create_manga(
+        self,
+        *,
+        title: Optional[Dict[str, str]] = None,
+        alt_titles: Optional[List[Dict[str, str]]] = None,
+        descriptions: Optional[Dict[str, str]] = None,
+        authors: Optional[List[Union[str, Author]]] = None,
+        artists: Optional[List[Union[str, Author]]] = None,
+        links: Optional[MangaLinks] = None,
+        language: Optional[str] = None,
+        last_volume: Optional[str] = None,
+        last_chapter_number: Optional[str] = None,
+        demographic: Optional[Demographic] = None,
+        status: Optional[MangaStatus] = None,
+        year: Optional[int] = None,
+        rating: Optional[ContentRating] = None,
+        notes: Optional[str] = None,
+        all_titles: Optional[Dict[str, TitleList]] = None,
+    ) -> Manga:
+        """Create a manga.
+
+        .. versionadded:: 0.5
+
+        .. note::
+            New mangas have to be approved by the mod team.
+
+        :param title: The titles of the manga.
+
+            .. note::
+                See the documentation for the ``all_titles`` parameter to learn how to add all titles in one dictionary.
+
+        :type title: Dict[str, str]
+        :param alt_titles: Alternate titles to use.
+        :type alt_titles: List[Dict[str, str]]
+        :param all_titles: A dictionary of a language code key and a :class:`.TitleList` as values.
+
+            .. warning:: Using ``title`` and ``all_titles`` will overwrite any values in the dictionary provided to
+                ``title`` if a correspodning title for the same language code is found in ``all_titles``.
+
+            .. admonition:: Using ``all_titles`` to set titles:
+
+                .. code-block:: python
+
+                    from asyncdex import AttrDict, TitleList
+
+                    titles_en = ["Primary", "secondary", "tertiary"]
+                    titles_es = ["Primero, "segundo"]
+                    title_dict = AttrDict()
+                    title_dict["en"] = TitleList(titles_en)
+                    title_dict["es"] = TitleList(titles_es)
+
+                    manga = await client.create_manga(..., all_titles=title_dict)
+
+        :type all_titles: Dict[str, TitleList]
+        :param descriptions: A dictionary of language codes to descriptions for that language.
+        :type descriptions: Dict[str, str]
+        :param authors: A list of either :class:`.Author` objects or author UUIDs.
+        :type authors: List[Author]
+        :param artists: A list of either :class:`.Author` objects or author UUIDs.
+        :type artists: List[Author]
+        :param links: An instance of :class:`.MangaLinks` containing the IDs for the manga.
+        :type links: MangaLinks
+        :param language: The original language of the manga.
+        :type language: str
+        :param last_volume: The number of the last volume.
+        :type last_volume: str
+        :param last_chapter_number: The number of the last chapter.
+        :type last_chapter_number: str
+        :param demographic: The manga's demographic, or ``None`` to have no demographic.
+        :type demographic: Optional[Demographic]
+        :param status: The manga's status, or ``None`` to have no status.
+        :type status: Optional[MangaStatus]
+        :param year: The year the manga started publication.
+        :type year: int
+        :param rating: The manga's content rating, or ``None`` to use the default.
+        :type rating: Optional[CotentRating]
+        :param notes: Optional notes to show to a moderator.
+        :type notes: str
+        :raise: :class:`ValueError` if the ``title`` field is None.
+        :return: The new manga.
+        :rtype: Manga
+        """
+        title = title or {}
+        alt_titles = alt_titles or []
+        all_titles = all_titles or {}
+        for lang, titles in all_titles.items():
+            primary, alternates = titles.parts()
+            title[lang] = primary
+            for item in alternates:
+                alt_titles.append({lang: item})
+        if not title:
+            raise ValueError("A title needs to be specified.")
+        params = {
+            "title": title,
+            "lastVolume": last_volume,
+            "lastChapter": last_chapter_number,
+            "publicationDemographic": demographic.value if demographic else None,
+            "status": status.value if status else None,
+            "contentRating": rating.value if rating else None,
+            "modNotes": notes,
+        }
+        if alt_titles:
+            params["altTitles"] = alt_titles
+        if descriptions:
+            params["description"] = descriptions
+        if authors:
+            params["authors"] = [str(item) for item in authors]
+        if artists:
+            params["artists"] = [str(item) for item in artists]
+        if links:
+            params["links"] = links.to_dict()
+        if language:
+            params["originalLanguage"] = language
+        if year:
+            params["year"] = year
+        self.raise_exception_if_not_authenticated("POST", routes["manga_edit"])
+        self.user.permission_exception("manga.create", "POST", routes["manga_edit"])
+        r = await self.request("POST", routes["manga_edit"], json=params)
+        json = await r.json()
+        r.close()
+        return Manga(self, data=json)
+
     # Misc methods
 
     async def ping(self):
@@ -1119,7 +1251,6 @@ class MangadexClient:
         else:
             success = r.ok and "image" in r.headers.get("Content-Type", "")
             cached = r.headers.get("X-Cache", "").lower().startswith("hit")
-            r.raise_for_status()
             return r
         finally:
             finish = datetime.utcnow()

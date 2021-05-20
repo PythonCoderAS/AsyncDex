@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from .abc import Model
-from .manga import MangaList
+from .manga_list import MangaList
 from .mixins import DatetimeMixin
 from .user import User
 from ..constants import routes

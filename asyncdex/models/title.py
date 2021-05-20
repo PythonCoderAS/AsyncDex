@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 class TitleList(List[str]):
@@ -23,3 +23,13 @@ class TitleList(List[str]):
         :rtype: str
         """
         return f"{type(self).__name__}{super().__repr__()}"
+
+    def parts(self) -> Tuple[str, List[str]]:
+        """Return the parts of this Title List.
+
+        .. versionadded:: 0.5
+
+        :return: The first title and a list of all remaining titles.
+        :rtype: Tuple[str, List[str]]
+        """
+        return self[0], self[1:]

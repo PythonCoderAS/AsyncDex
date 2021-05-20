@@ -1,9 +1,9 @@
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, ForwardRef
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from .abc import Model
+from .manga_list import MangaList
 from .mixins import DatetimeMixin
 from ..utils import DefaultAttrDict, copy_key_to_attribute
-from .manga import Manga, MangaList
 
 if TYPE_CHECKING:
     from ..client import MangadexClient
@@ -46,7 +46,7 @@ class Author(Model, DatetimeMixin):
         version: int = 0,
         data: Optional[Dict[str, Any]] = None,
     ):
-        self.mangas = MangaList(self.client)
+        self.mangas = MangaList(client)
         self.biographies = DefaultAttrDict(default=lambda: None)
         super().__init__(client, id=id, version=version, data=data)
 

@@ -87,7 +87,6 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
     async def _do_request(self, offset=None):
         offset = offset or self.params["offset"]
         r = await self.client.request("GET", self.url, params={**self.params, "offset": offset})
-        r.raise_for_status()
         if r.status == 204:
             self._done = True
             raise StopAsyncIteration
@@ -162,7 +161,8 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
 
         :rtype: ModelList
         """
-        from .manga import Manga, MangaList
+        from .manga import Manga
+        from .manga_list import MangaList
 
         if issubclass(self.model, Manga):
             return MangaList(self.client, entries=[item async for item in self])

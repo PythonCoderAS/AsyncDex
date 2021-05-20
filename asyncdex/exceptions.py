@@ -69,7 +69,7 @@ class Unauthorized(HTTPException):
     stored credentials."""
 
     def __init__(self, method: str, path: str, response: Optional[aiohttp.ClientResponse]):
-        super().__init__(method, path, response, msg=f"Unauthorized for {method} on {path}.")
+        super().__init__(method, path, response, msg="Unauthorized for {method} on {path}.")
 
 
 class Missing(AsyncDexException):

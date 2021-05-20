@@ -48,7 +48,7 @@ Models
 .. autoclass:: asyncdex.models.Manga
     :members:
     :inherited-members:
-    :special-members: __lt__, __le__, __gt__, __ge__, __str__, __eq__, __ne__, __hash__
+    :special-members: __lt__, __le__, __gt__, __ge__, __str__, __eq__, __ne__, __hash__, __getattr__
 
 .. autoclass:: asyncdex.models.Tag
     :members:
@@ -170,6 +170,12 @@ Filtering Utilities
 .. autoclass:: asyncdex.utils.Interval
     :members:
     :special-members: __eq__, __ne__, __le__, __lt__, __gt__, __ge__, __hash__
+
+Links
+.....
+
+.. autoclass:: asyncdex.models.MangaLinks
+    :members:
 
 List Orders
 ...........

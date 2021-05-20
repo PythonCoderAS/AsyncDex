@@ -78,7 +78,6 @@ class ClientUser(User):
 
     async def fetch(self):
         r = await self.client.request("GET", routes["auth_check"])
-        r.raise_for_status()
         json = await r.json()
         r.close()
         self.roles = json["roles"]
@@ -90,7 +89,6 @@ class ClientUser(User):
         """Fetch data about the client user from MangaDex servers. This will get the user's UUID."""
         self.client.raise_exception_if_not_authenticated("GET", routes["logged_in_user"])
         r = await self.client.request("GET", routes["logged_in_user"])
-        r.raise_for_status()
         json = await r.json()
         r.close()
         self.parse(data=json)

@@ -56,6 +56,25 @@ Source: https://stackoverflow.com/a/31976060/12248328
 .. versionadded:: 0.3
 """
 
+link_name_to_attribute_mapping: Dict[str, str] = {
+    "al": "anilist_id",
+    "ap": "animeplanet_id",
+    "bw": "bookwalker_id",
+    "mu": "mangaupdates_id",
+    "nu": "novelupdates_id",
+    "kt": "kitsu_id",
+    "amz": "amazon_id",
+    "cdj": "cdjapan_id",
+    "ebj": "ebookjapan_id",
+    "mal": "myanimelist_id",
+    "raw": "raw_url",
+    "engtl": "english_translation_url",
+}
+"""A mapping of the MangaDex link attribute name to the AsyncDex attribute name.
+
+.. versionadded:: 0.5
+"""
+
 ratelimit_data: List[PathRatelimit] = [
     PathRatelimit(Path("/account/create", compile(r"/account/create")), 1, 60 * 60),
     PathRatelimit(Path("/account/activate/{code}", compile(r"/account/activate/\S+")), 30, 60 * 60),
@@ -114,7 +133,10 @@ routes: Dict[str, str] = {
     "login": "/auth/login",
     "logout": "/auth/logout",
     "manga": "/manga/{id}",
+    "manga_edit": "/manga",
+    "manga_follow": "/manga/{id}/follow",
     "manga_chapters": "/manga/{id}/feed",
+    "manga_list": "/manga/{id}/list/{listId}",
     "manga_read": "/manga/{id}/read",
     "manga_read_status": "/manga/{id}/status",
     "md@h": "/at-home/server/{chapterId}",  # MD@H (MangaDex at Home)

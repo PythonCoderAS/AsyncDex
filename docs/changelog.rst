@@ -43,6 +43,16 @@ Added
 * Added permission checks to various methods.
 * :class:`.CustomList`
 * :meth:`.get_list`
+* :class:`.MangaLinks`
+* :meth:`.Manga.__getattr__`
+* :meth:`.Manga.update`
+* :meth:`.Manga.delete`
+* :meth:`.add_to_list`
+* :meth:`.remove_from_list`
+* :meth:`.follow`
+* :meth:`.unfollow`
+* :meth:`.TitleList.parts`
+* :meth:`.create_manga`
 
 Changed
 +++++++
