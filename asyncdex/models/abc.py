@@ -138,6 +138,10 @@ class Model(ABC):
     def __hash__(self):
         return hash((self.id, self.version, self.client))
 
+    async def _delete(self, route_name: str):
+        self.client.raise_exception_if_not_authenticated("DELETE", routes[route_name])
+        await self.client.request("DELETE", routes[route_name].format(id=self.id))
+
 
 class ModelList(ABC, List[_T], Generic[_T]):
     """An ABC representing a list of models.

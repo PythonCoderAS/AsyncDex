@@ -133,7 +133,6 @@ routes: Dict[str, str] = {
     "login": "/auth/login",
     "logout": "/auth/logout",
     "manga": "/manga/{id}",
-    "manga_edit": "/manga",
     "manga_follow": "/manga/{id}/follow",
     "manga_chapters": "/manga/{id}/feed",
     "manga_list": "/manga/{id}/list/{listId}",

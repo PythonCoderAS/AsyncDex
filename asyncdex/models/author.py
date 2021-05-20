@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 from .abc import Model
 from .manga_list import MangaList
 from .mixins import DatetimeMixin
+from ..constants import routes
 from ..utils import DefaultAttrDict, copy_key_to_attribute
 
 if TYPE_CHECKING:
@@ -76,3 +77,25 @@ class Author(Model, DatetimeMixin):
             await client.batch_mangas(*author.mangas)
         """
         await self.client.batch_mangas(*self.mangas)
+
+    async def update(self):
+        """Update the author.
+
+        .. versionadded:: 0.5
+        """
+        if not hasattr(self, "name"):
+            await self.fetch()
+        params = {"name": self.name, "version": self.version}
+        self.client.raise_exception_if_not_authenticated("PUT", routes["author"])
+        r = await self.client.request("PUT", routes["author"].format(id=self.id), json=params)
+        json = await r.json()
+        r.close()
+        obj = type(self)(self.client, data=json)
+        self.transfer(obj)
+
+    async def delete(self):
+        """Delete the author.
+
+        .. versionadded:: 0.5
+        """
+        return await self._delete("author")

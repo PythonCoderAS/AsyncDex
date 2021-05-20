@@ -1019,6 +1019,24 @@ class MangadexClient:
 
     # Create methods
 
+    async def create_author(self, name: str) -> Author:
+        """Create a new author.
+
+        .. versionadded:: 0.5
+
+        :param name: The author's name.
+        :type name: str
+        :return: The new author.
+        :rtype: Author
+        """
+        params = {"name": name}
+        self.raise_exception_if_not_authenticated("POST", routes["author_list"])
+        self.user.permission_exception("author.create", "POST", routes["author_list"])
+        r = await self.request("POST", routes["author_list"], json=params)
+        json = await r.json()
+        r.close()
+        return Author(self, data=json)
+
     async def create_manga(
         self,
         *,
@@ -1134,9 +1152,9 @@ class MangadexClient:
             params["originalLanguage"] = language
         if year:
             params["year"] = year
-        self.raise_exception_if_not_authenticated("POST", routes["manga_edit"])
-        self.user.permission_exception("manga.create", "POST", routes["manga_edit"])
-        r = await self.request("POST", routes["manga_edit"], json=params)
+        self.raise_exception_if_not_authenticated("POST", routes["search"])
+        self.user.permission_exception("manga.create", "POST", routes["search"])
+        r = await self.request("POST", routes["search"], json=params)
         json = await r.json()
         r.close()
         return Manga(self, data=json)

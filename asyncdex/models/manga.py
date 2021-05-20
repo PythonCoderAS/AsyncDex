@@ -707,7 +707,7 @@ class Manga(Model, DatetimeMixin):
         r = await self.client.request("PUT", routes["manga"].format(id=self.id), json=params)
         json = await r.json()
         r.close()
-        manga_obj = Manga(self.client, data=json)
+        manga_obj = type(self)(self.client, data=json)
         self.transfer(manga_obj)
 
     async def delete(self):
@@ -715,8 +715,7 @@ class Manga(Model, DatetimeMixin):
 
         .. versionadded:: 0.5
         """
-        self.client.raise_exception_if_not_authenticated("DELETE", routes["manga"])
-        await self.client.request("DELETE", routes["manga"].format(id=self.id))
+        return await self._delete("manga")
 
     async def add_to_list(self, custom_list: CustomList):
         """Add the manga to the custom list.
