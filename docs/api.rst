@@ -66,7 +66,13 @@ Exceptions
 .. autoexception:: asyncdex.exceptions.AsyncDexException
     :members:
 
+.. autoexception:: asyncdex.exceptions.Captcha
+    :members:
+
 .. autoexception:: asyncdex.exceptions.HTTPException
+    :members:
+
+.. autoexception:: asyncdex.exceptions.InvalidCaptcha
     :members:
 
 .. autoexception:: asyncdex.exceptions.InvalidID
@@ -128,6 +134,9 @@ Constants
 +++++++++
 
 .. autodata:: asyncdex.constants.invalid_folder_name_regex
+    :no-value:
+
+.. autodata:: asyncdex.constants.link_name_to_attribute_mapping
     :no-value:
 
 .. autodata:: asyncdex.constants.ratelimit_data

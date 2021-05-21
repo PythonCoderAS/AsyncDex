@@ -2,10 +2,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from .abc import Model
+from .chapter import Chapter
 from .manga_list import MangaList
 from .pager import Pager
 from .user import User
-from .chapter import Chapter
 from ..constants import routes
 from ..enum import Visibility
 from ..list_orders import MangaFeedListOrder
@@ -54,7 +54,7 @@ class CustomList(Model):
         await self._fetch(None, "list")
 
     async def load_mangas(self):
-        """Shortcut method that calls :meth:`.Client.batch_mangas` with the mangas that belong to the author.
+        """Shortcut method that calls :meth:`.MangadexClient.batch_mangas` with the mangas that belong to the author.
 
         Roughly equivalent to:
 

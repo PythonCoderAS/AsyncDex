@@ -11,7 +11,7 @@ import aiohttp
 
 from .constants import ratelimit_data, routes
 from .enum import ContentRating, Demographic, MangaStatus, TagMode
-from .exceptions import InvalidID, Ratelimit, Unauthorized
+from .exceptions import Captcha, InvalidCaptcha, InvalidID, Ratelimit, Unauthorized
 from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaListOrder
 from .models.abc import Model
 from .models.author import Author
@@ -274,32 +274,38 @@ class MangadexClient:
         if path_obj:
             path_obj.update(resp)
         do_retry = False
-        if resp.status == 401:  # Unauthorized
-            if self.session_token:  # Invalid session token
-                await self.get_session_token()
+        if url.startswith(self.api_base):
+            if resp.status == 401:  # Unauthorized
+                if self.session_token:  # Invalid session token
+                    await self.get_session_token()
+                    do_retry = True
+                elif self.username and self.password:  # Invalid refresh token
+                    await self.login()
+                    do_retry = True
+                else:
+                    try:
+                        raise Unauthorized(method, url, resp)
+                    finally:
+                        await resp.release()
+            elif resp.status in [403, 412]:
+                site_key = resp.headers.get("X-Captcha-Sitekey", "")
+                if site_key:
+                    raise Captcha(site_key, method, url, resp)
+            elif resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as
+                # well.
+                if resp.headers.get("x-ratelimit-retry-after", ""):
+                    diff = (
+                        datetime.utcfromtimestamp(int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()
+                    ).total_seconds()
+                    logger.warning("Sleeping for %s seconds.", diff)
+                    await asyncio.sleep(diff)
+                else:
+                    logger.warning("Sleeping for 1.25 seconds.")
+                    await asyncio.sleep(
+                        1.25
+                    )  # This is probably the result of multiple devices, so sleep for a second. Will
+                    # give up on the 4th try though if it is persistent.
                 do_retry = True
-            elif self.username and self.password:  # Invalid refresh token
-                await self.login()
-                do_retry = True
-            else:
-                try:
-                    raise Unauthorized(method, url, resp)
-                finally:
-                    await resp.release()
-        if resp.status == 429:  # Ratelimit error. This should be handled by ratelimits but I'll handle it here as well.
-            if resp.headers.get("x-ratelimit-retry-after", ""):
-                diff = (
-                    datetime.utcfromtimestamp(int(resp.headers["x-ratelimit-retry-after"])) - datetime.utcnow()
-                ).total_seconds()
-                logger.warning("Sleeping for %s seconds.", diff)
-                await asyncio.sleep(diff)
-            else:
-                logger.warning("Sleeping for 1.25 seconds.")
-                await asyncio.sleep(
-                    1.25
-                )  # This is probably the result of multiple devices, so sleep for a second. Will
-                # give up on the 4th try though if it is persistent.
-            do_retry = True
         if resp.status // 100 == 5:  # 5xx
             do_retry = True
         if do_retry:
@@ -1081,7 +1087,6 @@ class MangadexClient:
         r.close()
         return Group(self, data=json)
 
-
     async def create_manga(
         self,
         *,
@@ -1204,6 +1209,101 @@ class MangadexClient:
         r.close()
         return Manga(self, data=json)
 
+    # Account methods
+
+    async def create(
+        self, username: str, password: str, email: str, login: bool = True, store_credentials: bool = True
+    ):
+        """Create an account.
+
+        .. versionadded:: 0.5
+
+        :param username: The username of the account.
+        :type username: str
+        :param password: The password of the account.
+        :type password: str
+        :param email: The email of the account.
+        :type email: str
+        :param login: Whether or not to log in to the API using the new account credentials. Defaults to ``True``.
+        :type login: bool
+        :param store_credentials: Whether or not to store the credentials inside the client class. Defaults to ``True``.
+
+            .. note::
+                If the credentials are not stored but ``login`` is True, then the client will operate in refresh
+                token only mode.
+        :type store_credentials: bool
+        """
+        await self.request(
+            "POST",
+            routes["create_account"],
+            json={"username": username, "password": password, "email": email},
+            with_auth=False,
+        )
+        if login:
+            await self.login(username, password)
+            if not store_credentials:
+                self.username = self.password = None
+        elif store_credentials:
+            self.username = username
+            self.password = password
+
+    async def activate_account(self, code: str):
+        """Activate a MangaDex account.
+
+        .. versionadded:: 0.5
+
+        :param code: The code to activate.
+        :type code: str
+        """
+        await self.request("GET", routes["activate_account"].format(code=code), with_auth=False)
+
+    async def resend_activation_code(self, email: str):
+        """Resend an activation email.
+
+        .. versionadded:: 0.5
+
+        :param email: The email to resend to
+        :type email: str
+        """
+        await self.request("POST", routes["resend"], json={"email": email}, with_auth=False)
+
+    async def reset_password_email(self, email: str):
+        """Start the process of resetting an account's password.
+
+        .. versionadded:: 0.5
+
+        :param email: The email of the account to reset the password of.
+        :type email: str
+        """
+        await self.request("POST", routes["start_recover"], json={"email": email}, with_auth=False)
+
+    async def finish_password_reset(self, code: str, new_password: str, store_new_password: bool = True):
+        """Finish the password reset process.
+
+        .. versionadded:: 0.5
+
+        .. warning::
+            The MangaDex API fails silently on password resets, meaning that if a password reset fails it will not
+            tell you. Instead, future login attempts will fail. You can check if a reset is valid by calling
+            :meth:`.login` with the username and new password. If it returns 401 then the password reset failed.
+
+        :param code: The code obtained from the sent email.
+        :type code: str
+        :param new_password: The new password to set. Needs to be >8 characters.
+        :type new_password: str
+        :param store_new_password: Whether or not to store the password in the client. The password will not be
+            stored if a corresponding username is not stored in the client class. Defaults to ``True``.
+        :type store_new_password: bool
+        :raises: :class:`ValueError` if the password is <8 characters.
+        """
+        if len(new_password) < 8:
+            raise ValueError("Password must be >=8 characters.")
+        await self.request(
+            "POST", routes["finish_recover"].format(code=code), json={"newPassword": new_password}, with_auth=False
+        )
+        if store_new_password and self.username:
+            self.password = new_password
+
     # Misc methods
 
     async def ping(self):
@@ -1213,6 +1313,23 @@ class MangadexClient:
         .. versionadded:: 0.3
         """
         return await self._one_off("GET", routes["ping"])
+
+    async def solve_captcha(self, answer: str):
+        """Solve the captcha.
+
+        .. versionadded:: 0.5
+
+        :param answer: The answer to the captcha.
+        :type answer: str
+        :raises: :class:`.InvalidCaptcha` if the captcha is invalid.
+        """
+        r = await self.request(
+            "POST", routes["captcha"], json={"captchaChallenge": answer}, allow_non_successful_codes=True
+        )
+        if not r.ok:
+            raise InvalidCaptcha(r)
+        else:
+            r.close()
 
     async def convert_legacy(self, model: Type[_LegacyModelT], ids: List[int]) -> Dict[int, _LegacyModelT]:
         """Convert a list of legacy IDs to the new UUID system.
@@ -1264,7 +1381,7 @@ class MangadexClient:
 
         .. versionadded:: 0.4
 
-        .. seealso:: :meth:`.Client.get_page`, which will automatically call this method for you.
+        .. seealso:: :meth:`.MangadexClient.get_page`, which will automatically call this method for you.
 
         :param url: The URL of the image.
         :type url: str

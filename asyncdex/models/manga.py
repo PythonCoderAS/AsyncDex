@@ -569,7 +569,8 @@ class Manga(Model, DatetimeMixin):
         await self._fetch("manga.view", "manga")
 
     async def load_authors(self):
-        """Shortcut method that calls :meth:`.Client.batch_authors` with the authors and artists that belong to the
+        """Shortcut method that calls :meth:`.MangadexClient.batch_authors` with the authors and artists that belong
+        to the
         manga.
 
         Roughly equivalent to:

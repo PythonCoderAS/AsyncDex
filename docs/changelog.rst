@@ -61,6 +61,15 @@ Added
 * :meth:`.create_group`
 * :meth:`.CustomList.manga_chapters`
 * Two new parameters on :meth:`.logout`: ``delete_tokens`` and ``clear_login_info``
+* :class:`.Captcha`
+* :class:`.InvalidCaptcha`
+* :meth:`.solve_captcha`
+* :meth:`.MangadexClient.create`
+* :meth:`.MangadexClient.activate_account`
+* :meth:`.MangadexClient.resend_activation_code`
+* :meth:`.MangadexClient.reset_password_email`
+* :meth:`.MangadexClient.finish_password_reset`
+
 
 Changed
 +++++++
@@ -180,13 +189,13 @@ Fixed
 * :attr:`.Manga.last_chapter` did not account for floating point variables.
 * Changed :meth:`.Model.__repr__` to properly show the delimiters for strings.
 * :meth:`.MangadexClient.__aexit__` will now close the underlying session object.
-* Fixed a bug in :meth:`.Client.request` that prevented the use of non-string and non-iterable objects such as integers and floats.
+* Fixed a bug in :meth:`.MangadexClient.request` that prevented the use of non-string and non-iterable objects such as integers and floats.
 * Added a client-side fix for the incorrect spelling of the word ``hiatus`` on the MangaDex API.
 * Fixed a typo on :attr:`.Demographic.JOSEI` where the term "josei" was actually spelled "josel".
 * Added a message to :class:`.Unauthorized`.
 * Fixed a bunch of places where requests are not properly closed.
 * Changed the value of ``MangaStatus.ABANDONED`` to match new API specifications.
-* Fixed a bug in the retry mechanism of :meth:`.Client.request` that added the parameters for a second time.
+* Fixed a bug in the retry mechanism of :meth:`.MangadexClient.request` that added the parameters for a second time.
 
 v0.2
 ----

@@ -46,7 +46,7 @@ class Group(Model, DatetimeMixin):
             self.chapters = GenericModelList()
 
     async def load_chapters(self):
-        """Shortcut method that calls :meth:`.Client.batch_chapters` with the chapters that belong to the group.
+        """Shortcut method that calls :meth:`.MangadexClient.batch_chapters` with the chapters that belong to the group.
 
         Roughly equivalent to:
 

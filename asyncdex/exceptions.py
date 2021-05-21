@@ -3,6 +3,8 @@ from typing import Optional, TYPE_CHECKING, Type
 
 import aiohttp
 
+from .constants import routes
+
 if TYPE_CHECKING:
     from .models.abc import Model
 
@@ -125,5 +127,41 @@ class PermissionMismatch(HTTPException):
     stored credentials."""
 
     def __init__(self, permission: str, method: str, path: str, response: Optional[aiohttp.ClientResponse]):
-        super().__init__(method, path, response, msg=f"Missing permission {permission} for {method} on {path}.")
+        super().__init__(method, path, response, msg="Missing permission %s for {method} on {path}." % permission)
         self.permission = permission
+
+
+class Captcha(HTTPException):
+    """An exception raised if a captcha solve is required to proceed.
+
+    .. versionadded:: 0.5
+
+    .. admonition:: Solving reCaptchas with AsyncDex:
+
+        AsyncDex will raise the Captcha exception to any request that prompts for a captcha. Afterwards,
+        it is necessary to call :meth:`.solve_captcha` with the correct captcha response, and then retry whatever
+        request caused the captcha.
+    """
+
+    site_key: str
+    """The captcha sitekey to solve."""
+
+    def __init__(
+        self,
+        site_key: str,
+        method: str,
+        path: str,
+        response: aiohttp.ClientResponse,
+    ):
+        super().__init__(method, path, response, msg="Captcha required for {method} on {path}")
+        self.site_key = site_key
+
+
+class InvalidCaptcha(HTTPException):
+    """An exception raised if an attempt to solve a captcha was invalid.
+
+    .. versionadded:: 0.5
+    """
+
+    def __init__(self, response: aiohttp.ClientResponse):
+        super().__init__("POST", routes["captcha"], response, msg="Invalid captcha solve.")

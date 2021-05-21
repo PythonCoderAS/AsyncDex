@@ -112,13 +112,17 @@ ratelimit_data: List[PathRatelimit] = [
 """
 
 routes: Dict[str, str] = {
+    "activate_account": "/account/activate/{code}",
     "aggregate": "/manga/{id}/aggregate",
     "auth_check": "/auth/check",
     "author": "/author/{id}",
     "author_list": "/author",
     "batch_manga_read": "/manga/read",
+    "captcha": "/captcha/solve",
     "chapter": "/chapter/{id}",
     "chapter_list": "/chapter",
+    "create_account": "/account/create",
+    "finish_recover": "/account/recover/{code}",
     "group": "/group/{id}",
     "group_follow": "/group/{id}/follow",
     "group_list": "/group",
@@ -145,8 +149,10 @@ routes: Dict[str, str] = {
     "random_manga": "/manga/random",
     "read": "/chapter/{id}/read",
     "report_page": "https://api.mangadex.network/report",
+    "resend": "/account/activate/resend",
     "search": "/manga",
     "session_token": "/auth/refresh",
+    "start_recover": "/account/recover",
     "tag_list": "/manga/tag",
     "user": "/user/{id}",
 }
