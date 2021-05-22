@@ -34,5 +34,5 @@ View your manga follows list:
 
 .. code-block:: python
 
-    async for item in self.user.manga():
+    async for item in client.user.manga():
         print(item.titles.first().primary)
