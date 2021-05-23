@@ -1,6 +1,6 @@
 from os.path import abspath, join
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 from asyncdex import version
 
@@ -10,7 +10,7 @@ with open(abspath(join(__file__, "..", "README.rst"))) as file:
 setup(
     name="AsyncDex",
     version=version,
-    packages=["asyncdex"],
+    packages=[find_packages(abspath(join(__file__, "..", "asyncdex")))],
     url="https://github.com/PythonCoderAS/AsyncDex",
     license="MIT",
     author="PythonCoderAS",
@@ -18,7 +18,8 @@ setup(
     description="Async MangaDex library",
     long_description=long_desc,
     install_requires=["aiohttp", "natsort"],
-    extras_require={"dev": ["sphinx", "sphinx-rtd-theme"]},
+    extras_require={"docs": ["sphinx", "sphinx-rtd-theme"], "tests": ['pytest', 'asynctest', 'pytest-asyncio',
+                                                                  'pytest-recording', 'vcrpy', "pytest-mypy"]},
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
