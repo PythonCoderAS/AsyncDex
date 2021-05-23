@@ -10,7 +10,7 @@ with open(abspath(join(__file__, "..", "README.rst"))) as file:
 setup(
     name="AsyncDex",
     version=version,
-    packages=[find_packages(abspath(join(__file__, "..", "asyncdex")))],
+    packages=find_packages(abspath(join(__file__, "..", "asyncdex"))),
     url="https://github.com/PythonCoderAS/AsyncDex",
     license="MIT",
     author="PythonCoderAS",
