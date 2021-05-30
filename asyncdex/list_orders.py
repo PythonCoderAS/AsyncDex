@@ -1,8 +1,14 @@
 """Contains the order objects for all the lists."""
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 from .enum import OrderDirection
+
+_known_order_mappings: Dict[str, str] = {
+    "creation_time": "createdAt",
+    "update_time": "updatedAt",
+    "publish_time": "publishedAt",
+}
 
 
 @dataclass(frozen=True)
@@ -47,7 +53,31 @@ class ChapterListOrder:
 
 
 @dataclass(frozen=True)
+class CoverListOrder:
+    """An object representing the various options for ordering a cover list returned from
+    :meth:`.MangadexClient.get_covers`.
+
+    .. versionadded:: 1.0
+    """
+
+    creation_time: Optional[OrderDirection] = None
+    """The time a cover was created."""
+
+    update_time: Optional[OrderDirection] = None
+    """The time a cover was updated."""
+
+    volume: Optional[OrderDirection] = None
+    """The cover's volume"""
+
+
+@dataclass(frozen=True)
 class GroupListOrder:
+    """An object representing the various options for ordering a group list returned from
+    :meth:`.MangadexClient.get_groups`.
+
+    .. versionadded:: 0.5
+    """
+
     name: Optional[OrderDirection] = None
     """The name of the scanlation group [#V506_CHANGELOG]_."""
 

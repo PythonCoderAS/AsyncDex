@@ -1,0 +1,6 @@
+{
+  "username": "test",
+  "password": "test",
+  "refresh_token": "test",
+  "sleep_on_ratelimit": true
+}

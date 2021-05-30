@@ -1,6 +1,79 @@
 Changelog
 #########
 
+v1.0
+----
+
+Added
++++++
+
+* :attr:`.Relationship.COVER_ART`
+* :class:`.CoverArt`
+* :meth:`.from_environment_variables`
+* :meth:`.from_config`
+* :meth:`.from_json`
+* :meth:`.get_cover`
+* :meth:`.batch_covers`
+* :attr:`.Manga.cover`
+* :meth:`.get_covers`
+* :meth:`.create_cover`
+* :class:`.CoverListOrder`
+* :meth:`.parse_relationships` can now parse :class:`.CoverArt` models.
+* :class:`.CoverList`
+* :attr:`.Manga.covers`
+
+Changed
++++++++
+
+* :class:`.Pager` will now throw exceptions when it is given too many parameters.
+* :attr:`.HTTPException.response` may be ``None``.
+* :class:`.HTTPException` is now a subclass of :class:`aiohttp.ClientResponseError`.
+* :meth:`.request` will raise :class:`.HTTPException`.
+
+Deprecated
+++++++++++
+
+* :attr:`.Group.chapters`
+* :attr:`.User.chapters`
+
+Fixed
++++++
+
+* Renamed ``locales`` to ``translatedLanguage``.
+* Added the version to :meth:`.Group.update`.
+* Fixed a bug in :meth:`.Pager.__anext__` that threw Exceptions if the server response was empty.
+* Fixed a bug where list orders were not being correctly applied.
+
+Removed
++++++++
+
+* Method ``Chapter.get_page()``
+* Parameter ``locales`` in :meth:`.ChapterList.get` and :meth:`.ChapterList.filter`
+* Attribute ``Manga.anilist_id``
+* Attribute ``Manga.animeplanet_id``
+* Attribute ``Manga.bookwalker_id``
+* Attribute ``Manga.mangaupdates_id``
+* Attribute ``Manga.novelupdates_id``
+* Attribute ``Manga.kitsu_id``
+* Attribute ``Manga.amazon_id``
+* Attribute ``Manga.cdjapan_id``
+* Attribute ``Manga.ebookjapan_id``
+* Attribute ``Manga.myanimelist_id``
+* Attribute ``Manga.raw_url``
+* Attribute ``Manga.english_translation_url``
+* Property ``Manga.anilist_url``
+* Property ``Manga.animeplanet_url``
+* Property ``Manga.bookwalker_url``
+* Property ``Manga.mangaupdates_url``
+* Property ``Manga.novelupdates_url``
+* Property ``Manga.kitsu_url``
+* Property ``Manga.amazon_url``
+* Property ``Manga.cdjapan_url``
+* Property ``Manga.ebookjapan_url``
+* Property ``Manga.myanimelist_url``
+* Method ``Manga.__getattr__``
+* Method ``Client.logged_in_user()``
+
 v0.5
 ----
 

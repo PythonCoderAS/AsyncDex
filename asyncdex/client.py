@@ -1,22 +1,24 @@
 import asyncio
-import warnings
+import configparser
+import os
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from json import dumps as convert_obj_to_json
+from json import dumps as convert_obj_to_json, load
 from logging import NullHandler, getLogger
 from types import TracebackType
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import Any, BinaryIO, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 import aiohttp
 
 from .constants import ratelimit_data, routes
 from .enum import ContentRating, Demographic, MangaStatus, TagMode
-from .exceptions import Captcha, InvalidCaptcha, InvalidID, Ratelimit, Unauthorized
-from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaListOrder
+from .exceptions import Captcha, HTTPException, InvalidCaptcha, InvalidID, Ratelimit, Unauthorized
+from .list_orders import AuthorListOrder, ChapterListOrder, CoverListOrder, GroupListOrder, MangaListOrder
 from .models.abc import Model
 from .models.author import Author
 from .models.chapter import Chapter
 from .models.client_user import ClientUser
+from .models.cover_art import CoverArt
 from .models.custom_list import CustomList
 from .models.group import Group
 from .models.manga import Manga, MangaLinks
@@ -31,6 +33,9 @@ logger = getLogger(__name__)
 getLogger("asyncdex").addHandler(NullHandler())
 
 _LegacyModelT = TypeVar("_LegacyModelT", Manga, Chapter, Tag, Group)
+_T = TypeVar("_T")
+
+DEFAULT_API_URL = "https://api.mangadex.org"
 
 
 class MangadexClient:
@@ -112,6 +117,173 @@ class MangadexClient:
     .. versionadded:: 0.5
     """
 
+    # Alternate modes of initializing
+
+    @staticmethod
+    def _boolean(value: str) -> bool:
+        return value.lower() not in ["0", "false", "off", "no", "n", "-"]
+
+    @staticmethod
+    def _get_environment_variable(
+        name: str, post_process: Optional[Callable[[str], _T]] = None, default: _T = None
+    ) -> _T:
+        """Get an environment variable.
+
+        :param name: The name of the variable
+        :type name: str
+        :param post_process: A callable taking the value of the environment variable if it exists and returning a value.
+        :type post_process: Callable[[str], Any]
+        :param default: The default to return if the environment variable does not exist
+        :type default: Any
+        :return: The value of the environment variable or the default.
+        :rtype: Any
+        """
+        val = os.environ.get(name, None)
+        if val is not None:
+            if post_process:
+                return post_process(val)
+            else:
+                return val
+        else:
+            return default
+
+    @classmethod
+    def from_environment_variables(
+        cls,
+        *,
+        username_variable_name: str = "asyncdex_username",
+        password_variable_name: str = "asyncdex_password",
+        refresh_token_variable_name: str = "asyncdex_refresh_token",
+        anonymous_variable_name: str = "asyncdex_anonymous",
+        sleep_on_ratelimit_variable_name: str = "asyncdex_sleep_on_ratelimit",
+        api_url_variable_name="asyncdex_api_url",
+    ) -> "MangadexClient":
+        """Create a new :class:`.MangadexClient` from values stored inside environment variables.
+
+        .. versionadded:: 1.0
+
+        .. note::
+            If a value is missing for a parameter, the default value will be assumed.
+
+        .. admonition:: Boolean Values
+            These boolean values will be determined by the client to be a "false" value (case insensitive):
+
+            * ``0``
+            * ``false``
+            * ``off``
+            * ``no``
+            * ``n``
+            * ``-``
+
+            All other values will be interrupted as a "true" value.
+
+
+        :param username_variable_name: The name of the environment variable that contains the username. Defaults to
+            ``asyncdex_username``.
+        :type username_variable_name: str
+        :param password_variable_name: The name of the environment variable that contains the password.
+        :type password_variable_name: str
+        :param refresh_token_variable_name: The name of the environment variable that contains the refresh token.
+        :type refresh_token_variable_name: str
+        :param anonymous_variable_name: The name of the environment variable that contains a boolean representing
+            whether or not the client should operate in anonymous mode.
+        :type anonymous_variable_name: str
+        :param sleep_on_ratelimit_variable_name: The name of the environment variable that contains a boolean
+            representing whether or not the client should sleep on ratelimits.
+        :type sleep_on_ratelimit_variable_name: str
+        :param api_url_variable_name: The name of the environment variable that contains the base API url.
+        :type api_url_variable_name: str
+        :return: A new instance of the client.
+        :rtype: MangadexClient
+        """
+        username = cls._get_environment_variable(username_variable_name)
+        password = cls._get_environment_variable(password_variable_name)
+        refresh_token = cls._get_environment_variable(refresh_token_variable_name)
+        api_url = cls._get_environment_variable(api_url_variable_name, default=DEFAULT_API_URL)
+        anonymous = cls._get_environment_variable(anonymous_variable_name, cls._boolean, False)
+        sleep_on_ratelimit = cls._get_environment_variable(sleep_on_ratelimit_variable_name, cls._boolean, True)
+        return cls(
+            username=username,
+            password=password,
+            refresh_token=refresh_token,
+            sleep_on_ratelimit=sleep_on_ratelimit,
+            api_url=api_url,
+            anonymous=anonymous,
+        )
+
+    @classmethod
+    def from_config(cls, file_name: str, *, section_name: str = "asyncdex") -> "MangadexClient":
+        """Create a new :class:`.MangadexClient` from values stored inside of a ``.ini`` config file.
+
+        The name of the keys should match the names of the parameters for the class constructor.
+
+        .. versionadded:: 1.0
+
+        .. note::
+            The config parser module used will not support interpolation in order to not cause weird bugs with any
+            passwords that contain percentages.
+
+        :param file_name: The name of the config file. Can be an absolute or relative path.
+        :type file_name: str
+        :param section_name: The name of the section containing login info. Defaults to ``AsyncDex``.
+        :type section_name: str
+        :return: A new instance of the client.
+        :rtype: MangadexClient
+        """
+        config = configparser.RawConfigParser()
+        config.read(file_name, encoding="utf-8")
+        section = config[section_name]
+        username = section.get("username", None)
+        password = section.get("password", None)
+        refresh_token = section.get("refresh_token", None)
+        api_url = section.get("api_url", DEFAULT_API_URL)
+        anonymous = cls._boolean(section.get("anonymous", "false").lower())
+        sleep_on_ratelimit = cls._boolean(section.get("sleep_on_ratelimit", "true").lower())
+        return cls(
+            username=username,
+            password=password,
+            refresh_token=refresh_token,
+            sleep_on_ratelimit=sleep_on_ratelimit,
+            api_url=api_url,
+            anonymous=anonymous,
+        )
+
+    @classmethod
+    def from_json(cls, file_name: str) -> "MangadexClient":
+        """Create a new :class:`.MangadexClient` from values stored inside of a JSON file.
+
+        .. versionadded:: 1.0
+
+        .. note::
+            To use a JSON dict (not file), use `**` to expand the dict, such as:
+
+            .. code-block:: python
+
+                data = {"username": "Test", "password": "secret"}
+                client = MangadexClient(**data)
+
+        :param file_name: The name of the JSON file.
+        :type file_name: str
+        :return: A new instance of the client.
+        :rtype: MangadexClient
+        """
+        with open(file_name, "r", encoding="utf-8") as file:
+            data = load(file)
+        username = data.get("username", None)
+        password = data.get("password", None)
+        refresh_token = data.get("refresh_token", None)
+        api_url = data.get("api_url", DEFAULT_API_URL)
+        anonymous = cls._boolean(str(data.get("anonymous", "false")).lower())
+        sleep_on_ratelimit = cls._boolean(str(data.get("sleep_on_ratelimit", "true")).lower())
+        return cls(
+            username=username,
+            password=password,
+            refresh_token=refresh_token,
+            sleep_on_ratelimit=sleep_on_ratelimit,
+            api_url=api_url,
+            anonymous=anonymous,
+        )
+
     # Dunder methods
 
     def __init__(
@@ -122,7 +294,7 @@ class MangadexClient:
         refresh_token: Optional[str] = None,
         sleep_on_ratelimit: bool = True,
         session: aiohttp.ClientSession = None,
-        api_url: str = "https://api.mangadex.org",
+        api_url: str = DEFAULT_API_URL,
         anonymous: bool = False,
         **session_kwargs,
     ):
@@ -275,6 +447,10 @@ class MangadexClient:
             path_obj.update(resp)
         do_retry = False
         if url.startswith(self.api_base):
+            try:
+                await resp.read()
+            except Exception:
+                pass
             if resp.status == 401:  # Unauthorized
                 if self.session_token:  # Invalid session token
                     await self.get_session_token()
@@ -286,7 +462,7 @@ class MangadexClient:
                     try:
                         raise Unauthorized(method, url, resp)
                     finally:
-                        await resp.release()
+                        await resp.close()
             elif resp.status in [403, 412]:
                 site_key = resp.headers.get("X-Captcha-Sitekey", "")
                 if site_key:
@@ -315,9 +491,22 @@ class MangadexClient:
                     method, url, json=json, with_auth=with_auth, retries=retries - 1, **session_request_kwargs
                 )
             else:
-                resp.raise_for_status()
+                json_data = None
+                try:
+                    json_data = await resp.json()
+                except Exception:
+                    pass
+                finally:
+                    raise HTTPException(method, url, resp, json=json_data)
         elif not allow_non_successful_codes:
-            resp.raise_for_status()
+            if not resp.ok:
+                json_data = None
+                try:
+                    json_data = await resp.json()
+                except Exception as e:
+                    logger.warning("%s while trying to see response: %s", type(e).__name__, e)
+                finally:
+                    raise HTTPException(method, url, resp, json=json_data)
         return resp
 
     async def _one_off(self, method, url, *, params=None, json=None, with_auth=True, retries=3, **kwargs):
@@ -596,25 +785,6 @@ class MangadexClient:
         """
         return User(self, id=id)
 
-    async def logged_in_user(self) -> User:
-        """Get the user that is currently logged in.
-
-        .. versionadded:: 0.3
-
-        .. deprecated:: 0.5
-            Use :attr:`.user` and :meth:`.ClientUser.fetch_user`
-
-        :return: A :class:`.User` object.
-        :rtype: User
-        """
-        warnings.warn(
-            "MangadexClient.logged_in_user is deprecated. Use MangadexClient.user and " "ClientUser.fetch_user().",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        await self.user.fetch_user()
-        return self.user
-
     def get_group(self, id: str) -> Group:
         """Get a group using it's ID.
 
@@ -638,8 +808,7 @@ class MangadexClient:
 
         .. warning::
             This method returns a **lazy** CustomList instance. Call :meth:`.CustomList.fetch` on the returned object
-            to see
-            any values.
+            to see any values.
 
         :param id: The custom list's UUID.
         :type id: str
@@ -647,6 +816,22 @@ class MangadexClient:
         :rtype: CustomList
         """
         return CustomList(self, id=id)
+
+    def get_cover(self, id: str) -> CoverArt:
+        """Get a custom list using it's ID.
+
+        .. versionadded:: 1.0
+
+        .. warning::
+            This method returns a **lazy** CoverArt instance. Call :meth:`.CoverArt.fetch` on the returned object to
+            see any values.
+
+        :param id: The cover's UUID.
+        :type id: str
+        :return: A :class:`.CoverArt` object.
+        :rtype: CoverArt
+        """
+        return CoverArt(self, id=id)
 
     # Batch models
 
@@ -741,6 +926,17 @@ class MangadexClient:
             final_data.extend(json["data"])
         for item in mangas:
             item.chapters._update_read_data({"data": final_data})
+
+    async def batch_covers(self, *covers: CoverArt):
+        """Updates a lot of covers at once, reducing the time needed to update tens or hundreds of covers.
+        |permission| ``cover.list``
+
+        .. versionadded:: 1.0
+
+        :param covers: A tuple of all the covers to update.
+        :type covers: Tuple[CoverArt, ...]
+        """
+        await self._do_batch(covers, "cover.list", "cover_list")
 
     # Get lists
 
@@ -948,7 +1144,7 @@ class MangadexClient:
         order: Optional[MangaListOrder] = None,
         limit: Optional[int] = None,
     ) -> Pager[Manga]:
-        """Gets a :class:`.Pager` of mangas. |permission| ``manga.list``
+        r"""Gets a :class:`.Pager` of mangas. |permission| ``manga.list``
 
         .. versionadded:: 0.4
 
@@ -1000,14 +1196,14 @@ class MangadexClient:
                 aware.
 
         :type updated_after: datetime
+        :param order: The order to sort the mangas.
+        :type order: MangaListOrder
         :param limit: Only return up to this many mangas.
 
             .. note::
                 Not setting a limit when you are only interested in a certain amount of responses may result in the
                 Pager making more requests than necessary, consuming ratelimits.
 
-        :param order: The order to sort the mangas.
-        :type order: MangaListOrder
         :type limit: int
         :return: A Pager with the manga entries.
         :rtype: Pager
@@ -1043,6 +1239,56 @@ class MangadexClient:
 
     search = get_mangas
     """Alias for :meth:`.get_mangas`."""
+
+    def get_covers(
+        self,
+        *,
+        mangas: Optional[List[Union[str, Manga]]] = None,
+        uploaders: Optional[List[Union[str, User]]] = None,
+        order: Optional[CoverListOrder] = None,
+        limit: Optional[int] = None,
+    ) -> Pager[CoverArt]:
+        """Gets a :class:`.Pager` of covers. |permission| ``cover.list``
+
+        .. versionadded:: 1.0
+
+        Usage:
+
+        .. code-block:: python
+
+            async for cover in client.get_covers(uploaders=[client.user]):
+                ...
+
+        :param mangas: A list of mangas to get covers for .A cover may be represented by a string containing their UUID
+            or an instance of :class:`.CoverArt`.
+        :type mangas: List[Union[str, Manga]]
+        :param uploaders: Covers uploaded by the given users. An user may be represented by a string containing
+            their UUID or an instance of :class:`.User`.
+        :type uploaders: List[Union[str, User]]
+        :param order: The order to sort the covers.
+        :type order: CoverListOrder
+        :param limit: Only return up to this many covers.
+
+            .. note::
+                Not setting a limit when you are only interested in a certain amount of responses may result in the
+                Pager making more requests than necessary, consuming ratelimits.
+
+        :type limit: int
+        :return: A Pager with the cover entries.
+        :rtype: Pager
+        """
+        params = {}
+        if mangas:
+            if len(mangas) > 100:
+                raise ValueError("Only up to 100 mangas can be specified at a time.")
+            params["mangas"] = [str(item) for item in mangas]
+        if uploaders:
+            if len(uploaders) > 100:
+                raise ValueError("Only up to 100 uploaders can be specified at a time.")
+            params["uploaders"] = [str(item) for item in uploaders]
+        self._add_order(params, order)
+        self.user.permission_exception("cover.list", "GET", routes["cover_list"])
+        return Pager(routes["cover_list"], CoverArt, self, params=params, limit=limit)
 
     # Create methods
 
@@ -1209,6 +1455,41 @@ class MangadexClient:
         r.close()
         return Manga(self, data=json)
 
+    async def create_cover(self, manga: Union[str, Manga], file: Union[str, bytes, os.PathLike, BinaryIO]) -> CoverArt:
+        """Create a new author. |auth| |permission| ``cover.create``
+
+        .. versionadded:: 1.0
+
+        :param manga: The manga that the cover should belong to. Either specify a manga object or the manga UUID.
+        :type manga: Union[str, Manga]
+        :param file: Either the path to a file or a binary file descriptor.
+        :type file: Union[str, bytes, os.PathLike, BinaryIO]
+        :return: The new cover.
+        :rtype: CoverArt
+        """
+        actual_file = None
+        if isinstance(file, (str, bytes, os.PathLike)):
+            actual_file = open(file, "rb")
+        try:
+            files = {"file": actual_file or file}
+            self.raise_exception_if_not_authenticated("POST", routes["cover_upload"])
+            self.user.permission_exception("cover.create", "POST", routes["cover_upload"])
+            r = await self.request(
+                "POST",
+                routes["cover_upload"].format(mangaId=manga.id if isinstance(manga, Manga) else manga),
+                files=files,
+            )
+            json = await r.json()
+            r.close()
+            cover = CoverArt(self, data=json)
+            if isinstance(manga, Manga):
+                manga.cover = cover
+                cover.manga = manga
+            return cover
+        finally:
+            if actual_file:
+                actual_file.close()
+
     # Account methods
 
     async def create(
@@ -1326,9 +1607,10 @@ class MangadexClient:
         r = await self.request(
             "POST", routes["captcha"], json={"captchaChallenge": answer}, allow_non_successful_codes=True
         )
-        if not r.ok:
-            raise InvalidCaptcha(r)
-        else:
+        try:
+            if not r.ok:
+                raise InvalidCaptcha(r, json=await r.json())
+        finally:
             r.close()
 
     async def convert_legacy(self, model: Type[_LegacyModelT], ids: List[int]) -> Dict[int, _LegacyModelT]:
@@ -1421,7 +1703,7 @@ class MangadexClient:
         """
         start = datetime.utcnow()
         try:
-            r = await self.request("GET", url, retries=1)
+            r = await self.request("GET", url, retries=0)
             content_length = len(await r.read())
         except Exception:
             success = False
@@ -1437,10 +1719,10 @@ class MangadexClient:
             time_difference = int((finish - start).total_seconds() * 1000)
             try:
                 await asyncio.create_task(
-                    self.report_page(url, success, content_length, time_difference, cached)
-                )  # NOQA
-            except Exception:
-                pass
+                    self.report_page(url, success, content_length, time_difference, cached)  # NOQA
+                )
+            except Exception as e:
+                logger.warning("Error while reporting page after download: %s: %s", type(e).__name__, e)
 
     async def close(self):
         """Close the client.

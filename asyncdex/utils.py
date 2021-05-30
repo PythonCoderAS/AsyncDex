@@ -29,7 +29,7 @@ def remove_prefix(prefix: str, string: str) -> str:
         return string
 
 
-class AttrDict(dict, Dict[str, _VT], Generic[_VT]):
+class AttrDict(Dict[str, _VT], Generic[_VT]):
     """A :class:`dict` where keys can be accessed by attributes.
 
     .. versionadded:: 0.2
@@ -221,6 +221,11 @@ def parse_relationships(data: dict, obj: "Model"):
                 dupe_list = seen_uuids["groups"]
                 if relationship_id not in dupe_list:
                     relationship_data["groups"].append(obj.client.get_group(relationship_id))
+                    dupe_list.append(relationship_id)
+            elif relationship_type == Relationship.COVER_ART:
+                dupe_list = seen_uuids["covers"]
+                if relationship_id not in dupe_list:
+                    relationship_data["_covers"].append(obj.client.get_cover(relationship_id))
                     dupe_list.append(relationship_id)
     for key, value in relationship_data.items():
         setattr(obj, key, value)

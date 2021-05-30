@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 
 class VolumeAggregate(Dict[Optional[str], int]):
@@ -36,7 +36,7 @@ class VolumeAggregate(Dict[Optional[str], int]):
         """
         return sum(self.values())
 
-    def parse(self, data: Dict[str, Union[str, int, Dict[str, Dict[str, Union[str, int]]]]]):
+    def parse(self, data: Dict[str, Any]):
         """Parse aggregate data."""
         total_count = data["count"]
         if isinstance(data["chapters"], dict):
@@ -86,9 +86,7 @@ class MangaAggregate(Dict[Optional[str], VolumeAggregate]):
         """
         return sum(item.total() for item in self.values())
 
-    def parse(
-        self, data: Dict[str, Union[str, Dict[str, Dict[str, Union[str, int, Dict[str, Dict[str, Union[str, int]]]]]]]]
-    ):
+    def parse(self, data: Dict[str, Any]):
         """Parse aggregate data."""
         for key, value in data["volumes"].items():
             if key == "N/A":

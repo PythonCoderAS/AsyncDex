@@ -1,7 +1,7 @@
 import asyncio
 import re
-import warnings
 from datetime import datetime
+from logging import getLogger
 from os import makedirs
 from os.path import exists, join
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
@@ -14,6 +14,8 @@ from .mixins import DatetimeMixin
 from .user import User
 from ..constants import invalid_folder_name_regex, routes
 from ..utils import copy_key_to_attribute
+
+logger = getLogger(__name__)
 
 if TYPE_CHECKING:
     from .manga import Manga
@@ -157,18 +159,6 @@ class Chapter(Model, DatetimeMixin):
             for filename in (self.data_saver_page_names if data_saver else self.page_names)
         ]
 
-    async def get_page(self, url: str):
-        """Alias for :meth:`.MangadexClient.get_page`.
-
-        .. deprecated:: 0.4
-        """
-        warnings.warn(
-            "Chapter.get_page() is deprecated, use MangadexClient.get_page() instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        return await self.client.get_page(url)
-
     async def download_chapter(
         self,
         *,
@@ -238,8 +228,9 @@ class Chapter(Model, DatetimeMixin):
         pages = await self.pages(data_saver=use_data_saver, ssl_only=ssl_only)
         try:
             items = await asyncio.gather(*[self.client.get_page(url) for url in pages])
-        except ClientError:
+        except ClientError as e:
             if retries > 0:
+                logger.warning("Retrying download of chapter %s due to %s: %s", self.id, type(e).__name__, e)
                 return await self.download_chapter(
                     folder_format=folder_format,
                     as_bytes_list=as_bytes_list,
@@ -321,12 +312,11 @@ class Chapter(Model, DatetimeMixin):
             if hasattr(self, "_users"):
                 self.user = self._users[0]
                 del self._users
-            if self.mangas:
+            if hasattr(self, "mangas"):
                 # This is needed to move the list of Mangas created by the parse_relationships function into a
                 # singular manga, since there can never be >1 manga per chapter.
                 self.mangas: List[Manga]
                 self.manga = self.mangas[0]
-            if hasattr(self, "mangas"):
                 del self.mangas
 
     def _process_times(self, attributes: Dict[str, str]):

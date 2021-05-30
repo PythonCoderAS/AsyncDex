@@ -1,8 +1,12 @@
+import json
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING, Type
+from json import JSONDecodeError
+from typing import Dict, List, Optional, TYPE_CHECKING, Type
 
 import aiohttp
+from aiohttp import ClientResponseError, ContentTypeError
 
+from .utils import AttrDict
 from .constants import routes
 
 if TYPE_CHECKING:
@@ -34,7 +38,7 @@ class Ratelimit(AsyncDexException):
         self.ratelimit_expires = ratelimit_expires
 
 
-class HTTPException(AsyncDexException):
+class HTTPException(AsyncDexException, ClientResponseError):
     """Exceptions for HTTP status codes."""
 
     method: str
@@ -46,18 +50,45 @@ class HTTPException(AsyncDexException):
     path: str
     """The URL taken that hit the error."""
 
-    response: aiohttp.ClientResponse
-    """The :class:`aiohttp.ClientResponse` object from the request."""
+    response: Optional[aiohttp.ClientResponse]
+    """The :class:`aiohttp.ClientResponse` object from the request. May be ``None``.
+    
+    .. versionchanged:: 1.0
+        The response may be ``None``.
+    """
+
+    json: Optional[Dict[str, List[AttrDict[str]]]]
+    """The JSON object returned by the server if there is a response."""
+
+
 
     def __init__(
         self,
         method: str,
         path: str,
-        response: aiohttp.ClientResponse,
+        response: Optional[aiohttp.ClientResponse],
         *,
+        json: Optional[Dict[str, List[Dict[str, str]]]] = None,
         msg: str = "HTTP Error on {method} for {path}.",
     ):
-        super().__init__(msg.format(**locals()))
+        self.json = json
+        if json and json.get("errors", None):
+            self.json["errors"] = [AttrDict(item) for item in self.json["errors"]]
+        if self.json:
+            primary_error = self.json["errors"][0]
+            msg = "{primary_error.title}: {primary_error.detail}"
+            if primary_error.context:
+                msg += " ({primary_error.context})"
+        if response:
+            super().__init__(response.request_info,
+                response.history,
+                status=response.status,
+                headers=response.headers,
+                             message=msg.format(**locals()))
+        else:
+            super().__init__(None,
+                             None,
+                             message=msg.format(**locals()))
         self.path = path
         self.response = response
 
@@ -70,8 +101,8 @@ class Unauthorized(HTTPException):
     """The :class:`aiohttp.ClientResponse` object from the request. May be ``None`` if a user tries to login without 
     stored credentials."""
 
-    def __init__(self, method: str, path: str, response: Optional[aiohttp.ClientResponse]):
-        super().__init__(method, path, response, msg="Unauthorized for {method} on {path}.")
+    def __init__(self, method: str, path: str, response: Optional[aiohttp.ClientResponse], *, json: Optional[Dict[str, List[Dict[str, str]]]] = None,):
+        super().__init__(method, path, response, msg="Unauthorized for {method} on {path}.", json=json)
 
 
 class Missing(AsyncDexException):
@@ -163,5 +194,5 @@ class InvalidCaptcha(HTTPException):
     .. versionadded:: 0.5
     """
 
-    def __init__(self, response: aiohttp.ClientResponse):
-        super().__init__("POST", routes["captcha"], response, msg="Invalid captcha solve.")
+    def __init__(self, response: aiohttp.ClientResponse, *, json: Optional[Dict[str, List[Dict[str, str]]]] = None,):
+        super().__init__("POST", routes["captcha"], response, msg="Invalid captcha solve.", json=json)

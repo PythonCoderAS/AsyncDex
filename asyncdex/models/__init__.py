@@ -1,6 +1,8 @@
 from .author import Author
 from .chapter import Chapter
 from .chapter_list import ChapterList
+from .cover_art import CoverArt
+from .cover_list import CoverList
 from .custom_list import CustomList
 from .group import Group
 from .manga import Manga, MangaLinks

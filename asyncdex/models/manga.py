@@ -1,10 +1,11 @@
-import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .abc import GenericModelList, Model
 from .aggregate import MangaAggregate
 from .chapter_list import ChapterList
+from .cover_art import CoverArt
+from .cover_list import CoverList
 from .custom_list import CustomList
 from .mixins import DatetimeMixin
 from .tag import Tag
@@ -257,90 +258,6 @@ class Manga(Model, DatetimeMixin):
         In order to efficiently get all authors and artists in one go, use :meth:`.load_authors`.
     """
 
-    anilist_id: Optional[str]
-    """The ID for the entry on Anilist, if it exists.
-    
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    animeplanet_id: Optional[str]
-    """The ID for the entry on AnimePlanet, if it exists.
-    
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    bookwalker_id: Optional[str]
-    """The ID for the entry on Bookwalker, if it exists.
-    
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    mangaupdates_id: Optional[str]
-    """The ID for the entry on MangaUpdates, if it exists.
-    
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    novelupdates_id: Optional[str]
-    """The ID for the entry on NovelUpdates, if it exists.
-    
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    kitsu_id: Optional[str]
-    """The ID for the entry on Kitsu, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    amazon_id: Optional[str]
-    """The ID for the entry on Amazon, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    cdjapan_id: Optional[str]
-    """The ID for the entry on CDJapan, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    ebookjapan_id: Optional[str]
-    """The ID for the entry on EbookJapan, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    myanimelist_id: Optional[str]
-    """The ID for the entry on MyAnimeList, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    raw_url: Optional[str]
-    """The URL for the official raws of the manga, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
-    english_translation_url: Optional[str]
-    """The URL for the official English translation of the manga, if it exists.
-
-    .. deprecated:: 0.5
-        Use :attr:`.links` instead.
-    """
-
     chapters: ChapterList
     """A :class:`.ChapterList` representing the chapters of the manga.
     
@@ -359,137 +276,17 @@ class Manga(Model, DatetimeMixin):
     .. versionadded:: 0.5
     """
 
-    @property
-    def anilist_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's Anilist entry if it exists.
+    cover: Optional[CoverArt] = None
+    """The cover of the manga, if one exists.
 
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
+    .. versionadded:: 1.0
+    """
 
-        :return: A full URL or None if :attr:`.anilist_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def animeplanet_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's AnimePlanet entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.animeplanet_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def bookwalker_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's Bookwalker entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.bookwalker_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def mangaupdates_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's MangaUpdates entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.mangaupdates_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def novelupdates_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's NovelUpdates entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.novelupdates_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def kitsu_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's Kitsu entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.kitsu_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def amazon_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's Amazon entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        .. note::
-            While the MangaDex API currently returns fully formatted URLs for the :attr:`.amazon_id` attribute,
-            this may change in the future. This property will always return a fully formatted URL.
-
-        :return: A full URL or None if :attr:`.amazon_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def cdjapan_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's CDJapan entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        .. note::
-            While the MangaDex API currently returns fully formatted URLs for the :attr:`.cdjapan_id` attribute,
-            this may change in the future. This property will always return a fully formatted URL.
-
-        :return: A full URL or None if :attr:`.cdjapan_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def ebookjapan_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's EbookJapan entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        .. note::
-            While the MangaDex API currently returns fully formatted URLs for the :attr:`.ebookjapan_id` attribute,
-            this may change in the future. This property will always return a fully formatted URL.
-
-        :return: A full URL or None if :attr:`.ebookjapan_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
-
-    @property
-    def myanimelist_url(self) -> Optional[str]:
-        """Returns a formatted url for the manga's MyAnimeList entry if it exists.
-
-        .. deprecated:: 0.5
-            Use :attr:`.links` instead.
-
-        :return: A full URL or None if :attr:`.myanimelist_id` is None.
-        :rtype: str
-        """
-        raise Exception("Trigger getattr")
+    covers: CoverList
+    """An instance of :class:`.CoverList` allowing easy retrieval of manga covers.
+    
+    .. versionadded:: 1.0
+    """
 
     def __init__(
         self,
@@ -560,6 +357,9 @@ class Manga(Model, DatetimeMixin):
                 self.links.parse(links)
             self._parse_relationships(data)
             self.chapters = ChapterList(self)
+            if hasattr(self, "_covers"):
+                self.cover = self._covers[0]
+                del self._covers
 
     async def fetch(self):
         """Fetch data about the manga. |permission| ``manga.view``
@@ -581,13 +381,20 @@ class Manga(Model, DatetimeMixin):
         """
         await self.client.batch_authors(*self.authors, *self.artists)
 
-    async def aggregate(self) -> MangaAggregate:
+    async def aggregate(self, languages: Optional[List[str]] = None) -> MangaAggregate:
         """Get the aggregate of this manga.
 
+        .. versionadded: 0.5
+
+        :param languages: The languages that should be part of the aggregate.
+        :type languages: List[str]
         :return: The manga's aggregate.
         :rtype: MangaAggregate
         """
-        r = await self.client.request("GET", routes["aggregate"].format(id=self.id))
+        params = {}
+        if languages:
+            params["translatedLanguage"] = languages
+        r = await self.client.request("GET", routes["aggregate"].format(id=self.id), params=params)
         self._check_404(r)
         ma = MangaAggregate()
         ma.parse(await r.json())
@@ -619,27 +426,6 @@ class Manga(Model, DatetimeMixin):
         )
         r.close()
         self.reading_status = status
-
-    def __getattr__(self, item: str) -> Any:
-        """Used to pass attributes from :attr:`.links` over.
-
-        .. deprecated:: 0.5
-            This method will be removed along with all other deprecated attributes and property, and this method
-            serves as a way to not break backwards compatibility.
-
-        :param item: The name of the item.
-        :type item: str
-        :return: The item's value if it exists.
-        :rtype: Any
-        """
-        if not item.startswith("_") and item in self.links.__dict__:
-            warnings.warn(
-                f"manga.{item} is deprecated. Use manga.links.{item} instead.",
-                category=DeprecationWarning,
-                stacklevel=3,
-            )
-            return getattr(self.links, item)
-        return object.__getattribute__(self, item)
 
     async def update(self, notes: Optional[str]):
         """Update the manga using values from the class. |auth|

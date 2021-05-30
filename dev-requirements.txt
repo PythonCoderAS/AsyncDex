@@ -1,0 +1,5 @@
+pytest
+asynctest
+pytest-asyncio
+pytest-recording
+git+https://github.com/PythonCoderAS/vcrpy.git@master#egg=vcrpy

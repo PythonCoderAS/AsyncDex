@@ -35,6 +35,11 @@ Models
     :inherited-members:
     :special-members: __lt__, __le__, __gt__, __ge__, __str__, __eq__, __ne__, __hash__
 
+.. autoclass:: asyncdex.models.CoverArt
+    :members:
+    :inherited-members:
+    :special-members: __lt__, __le__, __gt__, __ge__, __str__, __eq__, __ne__, __hash__
+
 .. autoclass:: asyncdex.models.CustomList
     :members:
     :inherited-members:
@@ -195,6 +200,9 @@ List Orders
 .. autoclass:: asyncdex.list_orders.ChapterListOrder
     :members:
 
+.. autoclass:: asyncdex.list_orders.CoverListOrder
+    :members:
+
 .. autoclass:: asyncdex.list_orders.GroupListOrder
     :members:
 
@@ -220,6 +228,10 @@ Model Containers
     :special-members: __repr__
 
 .. autoclass:: asyncdex.models.ChapterList
+    :members:
+    :special-members: __repr__
+
+.. autoclass:: asyncdex.models.CoverList
     :members:
     :special-members: __repr__
 

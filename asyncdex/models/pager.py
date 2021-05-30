@@ -44,6 +44,12 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
     .. versionadded:: 0.5
     """
 
+    param_size: int
+    """How many parameters can be included in a given request.
+    
+    .. versionadded:: 1.0
+    """
+
     def __init__(
         self,
         url: str,
@@ -51,6 +57,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         client: "MangadexClient",
         *,
         params: Optional[MutableMapping[str, Any]] = None,
+        param_size: int = 150,
         limit_size: int = 100,
         limit: Optional[int] = None,
     ):
@@ -62,6 +69,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         self.params = params or {}
         self.params.setdefault("offset", 0)
         self.params["limit"] = limit_size
+        self.param_size = param_size
         if self.limit and self.params["limit"] > self.limit:
             self.params["limit"] = self.limit
         self._queue = deque()
@@ -70,6 +78,23 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
         # A queue that fills after network requests. This is used to only the return the first of a lot of responses
         # on the initial request, and return more items afterwards.
         self._done = False
+        # We want to check the parameters to get the total length in order to distribute resources effectively.
+        single_params = 0
+        iterator_params = {}
+        for key, value in self.params.items():
+            if not isinstance(value, str) and hasattr(value, "__iter__"):
+                iterator_params[key] = list(value)
+            else:
+                single_params += 1
+        remaining_params = self.param_size - single_params
+        leftover = sum(len(item) for item in iterator_params.values())
+        pagers_needed = ceil(leftover / remaining_params)
+        if pagers_needed > 1:
+            largest = sorted(iterator_params.items(), key=lambda i: i[1])[0]
+            raise ValueError(
+                "There are more parameters specified than the amount that can be safely handled by the "
+                f"API.\nLargest parameter: {largest[0]} with {largest[1]} items"
+            )
 
     def __aiter__(self) -> AsyncIterator[_ModelT]:
         """Return an async iterator (itself)
@@ -137,7 +162,10 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
             else:
                 await self._do_request(self.params["offset"])
         self.returned += 1
-        return self._queue.popleft()
+        try:
+            return self._queue.popleft()
+        except IndexError:
+            raise StopAsyncIteration
 
     def __repr__(self) -> str:
         """Provide a string representation of the object.

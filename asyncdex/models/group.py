@@ -26,7 +26,11 @@ class Group(Model, DatetimeMixin):
     """Users who are members of the group."""
 
     chapters: GenericModelList["Chapter"]
-    """A list of chapters uploaded by the group."""
+    """A list of chapters uploaded by the group.
+    
+    .. deprecated:: 1.0
+        MangaDex will no longer send chapters back. The chapter list will always be empty.
+    """
 
     def parse(self, data: Dict[str, Any]):
         super().parse(data)
@@ -68,7 +72,12 @@ class Group(Model, DatetimeMixin):
 
         .. versionadded:: 0.5
         """
-        params = {"name": self.name, "members": [item.id for item in self.members], "leader": self.leader.id}
+        params = {
+            "name": self.name,
+            "members": [item.id for item in self.members],
+            "leader": self.leader.id,
+            "version": self.version,
+        }
         self.client.raise_exception_if_not_authenticated("PUT", routes["group"])
         r = await self.client.request("PUT", routes["group"].format(id=self.id), json=params)
         json = await r.json()

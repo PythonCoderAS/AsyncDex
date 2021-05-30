@@ -18,7 +18,7 @@ from .exceptions import (
     Ratelimit,
     Unauthorized,
 )
-from .list_orders import AuthorListOrder, ChapterListOrder, GroupListOrder, MangaListOrder
+from .list_orders import AuthorListOrder, ChapterListOrder, CoverListOrder, GroupListOrder, MangaListOrder
 from .models import *
 from .utils import AttrDict, DefaultAttrDict, InclusionExclusionPair, Interval
 from .version import version

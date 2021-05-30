@@ -40,10 +40,12 @@ class ClientUser(User):
             "chapter.view",
             "author.view",
             "scanlation_group.view",
+            "cover.view",
             "manga.list",
             "chapter.list",
             "author.list",
             "scanlation_group.list",
+            "cover.list",
         ]  # These are the default perms for non-authenticated people.
 
     def permission_check(self, permission_name: str) -> bool:
@@ -193,7 +195,7 @@ class ClientUser(User):
         """
         params = {}
         if languages:
-            params["locales"] = languages
+            params["translatedLanguage"] = languages
         if created_after:
             params["createdAtSince"] = return_date_string(created_after)
         if updated_after:

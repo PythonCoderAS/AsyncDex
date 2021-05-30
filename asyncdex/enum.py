@@ -185,6 +185,12 @@ class Relationship(Enum):
     CUSTOM_LIST = "custom_list"
     """A :class:`.CustomList` resource."""
 
+    COVER_ART = "cover_art"
+    """A :class:`.CoverArt` resource.
+    
+    .. versionadded:: 1.0
+    """
+
 
 class DuplicateResolutionAlgorithm(Enum):
     """An enum representing the various methods of resolving duplicate chapters in the same language.

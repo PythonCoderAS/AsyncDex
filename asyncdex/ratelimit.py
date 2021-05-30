@@ -163,15 +163,15 @@ class Ratelimits:
         :return: The :class:`~.PathRatelimit` object if found
         :rtype: :class:`~.PathRatelimit`
         """
-        time_to_sleep, retval = await self.check(url, method)
-        if time_to_sleep > 0:
+        time_to_sleep, return_val = await self.check(url, method)
+        if return_val and time_to_sleep > 0:
             async with self._enqueue_lock:
-                retval.ratelimit_enqueued += 1
+                return_val.ratelimit_enqueued += 1
             logger.warning("Sleeping for %s seconds.", time_to_sleep)
             await asyncio.sleep(time_to_sleep)
             async with self._enqueue_lock:
-                retval.ratelimit_enqueued -= 1
-        return retval
+                return_val.ratelimit_enqueued -= 1
+        return return_val
 
     def __repr__(self) -> str:
         """Provide a string representation of the object.

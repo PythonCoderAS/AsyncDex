@@ -1,5 +1,4 @@
 import asyncio
-import warnings
 from collections import defaultdict
 from datetime import datetime
 from functools import partial
@@ -9,6 +8,7 @@ from natsort import natsort_keygen
 
 from .abc import ModelList
 from .aggregate import MangaAggregate, VolumeAggregate
+from .chapter import Chapter
 from .group import Group
 from .pager import Pager
 from .user import User
@@ -19,14 +19,13 @@ from ..utils import InclusionExclusionPair, Interval, return_date_string
 
 if TYPE_CHECKING:
     from .manga import Manga
-    from .chapter import Chapter
 
 
-def _chapter_attr_map(items: List["Chapter"], attr: str):
+def _chapter_attr_map(items: List[Chapter], attr: str):
     return {getattr(item, attr): item for item in items}
 
 
-def _get_smallest_creation_time(items: List["Chapter"]):
+def _get_smallest_creation_time(items: List[Chapter]):
     return sorted(((item.created_at, item) for item in items), key=lambda i: i[0])[0]
 
 
@@ -42,7 +41,7 @@ def _check_values(set1: set, set2: set) -> int:
 
 
 def _resolve_duplicates(
-    chapter_list: List["Chapter"],
+    chapter_list: List[Chapter],
     algo: List[DuplicateResolutionAlgorithm],
     specific_groups: Optional[Iterable[Group]],
     specific_users: Optional[Iterable[User]],
@@ -51,7 +50,7 @@ def _resolve_duplicates(
     last_chapter: Optional[set] = None
     specific_groups = specific_groups or []
     specific_users = specific_users or []
-    chapter_dict: Dict[Optional[str], List["Chapter"]] = defaultdict(list)
+    chapter_dict: Dict[Optional[str], List[Chapter]] = defaultdict(list)
     final = ChapterList(chapter_list[0].manga)
     for item in chapter_list:
         chapter_dict[item.number].append(item)
@@ -118,26 +117,25 @@ def _resolve_duplicates(
     return final
 
 
-class ChapterList(ModelList["Chapter"]):
+class ChapterList(ModelList[Chapter]):
     """An object representing a list of chapters from a manga.
 
     .. versionadded:: 0.3
 
     :param entries: Pre-fill the ChapterList with the given entries.
-    :type entries: Iterable["Chapter"]
+    :type entries: Iterable[Chapter]
     """
 
     manga: "Manga"
     """The :class:`.Manga` that this chapter list belongs to."""
 
-    def __init__(self, manga: "Manga", *, entries: Optional[Iterable["Chapter"]] = None):
+    def __init__(self, manga: "Manga", *, entries: Optional[Iterable[Chapter]] = None):
         super().__init__(entries or [])
         self.manga = manga
 
     async def get(
         self,
         *,
-        locales: Optional[List[str]] = None,
         languages: Optional[List[str]] = None,
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
@@ -153,8 +151,9 @@ class ChapterList(ModelList["Chapter"]):
         .. deprecated:: 0.5
             Parameter ``locales``
 
-        :param locales: An alias for the ``languages`` parameter.
-        :type locales: List[str]
+        .. versionchanged:: 1.0
+            Parameter ``locales`` was removed.
+
         :param languages: The languages to filter by.
         :type languages: List[str]
         :param created_after: Get chapters created after this date.
@@ -190,13 +189,8 @@ class ChapterList(ModelList["Chapter"]):
         :type limit: int
         """
         params = {}
-        if locales is not None:
-            warnings.warn(
-                "Parameter locales is deprecated, rename to languages.", category=DeprecationWarning, stacklevel=2
-            )
-            languages = [*languages, *locales]
         if languages:
-            params["locales"] = languages
+            params["translatedLanguage"] = languages
         if created_after:
             params["createdAtSince"] = return_date_string(created_after)
         if updated_after:
@@ -212,7 +206,6 @@ class ChapterList(ModelList["Chapter"]):
             limit_size=500,
             limit=limit,
         ):
-            item: Chapter
             item.manga = self.manga
             if item in self:
                 self[self.index(item)] = item
@@ -277,7 +270,6 @@ class ChapterList(ModelList["Chapter"]):
     def filter(
         self,
         *,
-        locales: Optional[List[str]] = None,
         languages: Optional[List[str]] = None,
         creation_time: Optional[Interval[datetime]] = None,
         update_time: Optional[Interval[datetime]] = None,
@@ -311,8 +303,9 @@ class ChapterList(ModelList["Chapter"]):
         .. deprecated:: 0.5
             Parameter ``locales``
 
-        :param locales: An alias for the ``languages`` parameter.
-        :type locales: List[str]
+        .. versionchanged:: 1.0
+            Parameter ``locales`` was removed.
+
         :param languages: The languages that should be present in the chapters.
         :type languages: List[str]
         :param creation_time: An :class:`.Interval` representing the bounds of the chapter's creation time.
@@ -486,12 +479,7 @@ class ChapterList(ModelList["Chapter"]):
 
         :rtype: ChapterList
         """
-        if locales is not None:
-            warnings.warn(
-                "Parameter locales is deprecated, rename to languages.", category=DeprecationWarning, stacklevel=2
-            )
-            languages = [*languages, *locales]
-        base: Iterable["Chapter"] = self.copy()
+        base: Iterable[Chapter] = self.copy()
         options = (
             languages,
             creation_time,
@@ -557,11 +545,11 @@ class ChapterList(ModelList["Chapter"]):
         """
         return f"{type(self).__name__}{super().__repr__()}"
 
-    def sort(self, *, key: Optional[Callable[["Chapter"], Any]] = None, reverse: bool = False):
+    def sort(self, *, key: Optional[Callable[[Chapter], Any]] = None, reverse: bool = False):
         """Sort the ChapterList. This uses a natural sorting algorithm to sort the chapters.
 
         :param key: An optional key if you want to override the sorting key used by the class.
-        :type key: Callable[["Chapter"], Any]
+        :type key: Callable[[Chapter], Any]
         :param reverse: Whether or not to reverse the list.
         :type reverse: bool
         """
@@ -578,7 +566,7 @@ class ChapterList(ModelList["Chapter"]):
         retries: int = 3,
         use_data_saver: bool = False,
         ssl_only: bool = False,
-    ) -> Dict["Chapter", Optional[List[str]]]:
+    ) -> Dict[Chapter, Optional[List[str]]]:
         """Download all chapters in the list.
 
         .. versionadded:: 0.4

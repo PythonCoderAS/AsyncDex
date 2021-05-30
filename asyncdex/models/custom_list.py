@@ -115,7 +115,7 @@ class CustomList(Model):
         """
         params = {}
         if languages:
-            params["locales"] = languages
+            params["translatedLanguage"] = languages
         if created_after:
             params["createdAtSince"] = return_date_string(created_after)
         if updated_after:

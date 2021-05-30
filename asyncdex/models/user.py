@@ -17,7 +17,11 @@ class User(Model):
     """THe user's username."""
 
     chapters: GenericModelList["Chapter"]
-    """The chapters the user uploaded"""
+    """The chapters the user uploaded.
+    
+    .. deprecated:: 1.0
+        MangaDex will no longer send chapters back. The chapter list will always be empty.
+    """
 
     def parse(self, data: Dict[str, Any]):
         super().parse(data)
