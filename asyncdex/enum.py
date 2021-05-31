@@ -139,6 +139,12 @@ class ContentRating(Enum):
         content was also the type of content that old MangaDex APIs used to call "hentai".
     """
 
+    NO_RATING = "none"
+    """A manga that has no content rating.
+    
+    .. versionadded:: 1.0
+    """
+
 
 class Visibility(Enum):
     """An enum representing the visibility of an :class:`.CustomList`. Source:

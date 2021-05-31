@@ -1,0 +1,540 @@
+interactions:
+  - request:
+      body:
+        password: PASSWORD
+        username: USERNAME
+      headers: { }
+      method: POST
+      uri: https://api.mangadex.org/auth/login
+    response:
+      body:
+        string: '{"result":"ok","token":{"session":"session_token","refresh":"refresh"}}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:26 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Set-Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY; Domain=.mangadex.org; HttpOnly; Path=/; Expires=Mon,
+            30-May-2022 13:50:26 GMT
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - '1300687'
+        x-frame-options:
+          - DENY
+        x-ratelimit-limit:
+          - '30'
+        x-ratelimit-remaining:
+          - '16'
+        x-ratelimit-retry-after:
+          - '1622383150'
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/auth/login
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/auth/check
+    response:
+      body:
+        string: '{"result":"ok","isAuthenticated":true,"roles":["ROLE_MEMBER","IS_JWT_AUTHENTICATED","IS_AUTHENTICATED_FULLY","IS_AUTHENTICATED_ANONYMOUSLY","IS_AUTHENTICATED_REMEMBERED"],"permissions":["user.list","manga.view","chapter.view","author.view","scanlation_group.view","cover.view","manga.list","chapter.list","author.list","scanlation_group.list","cover.list"]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:27 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - b80db55
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/auth/check
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/user/me
+    response:
+      body:
+        string: '{"result":"ok","data":{"id":"72704f84-a9ac-4078-a688-0e910b811abc","type":"user","attributes":{"username":"PokestarFan","version":5}},"relationships":[]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:27 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 7ed390e
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/user/me
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/auth/check
+    response:
+      body:
+        string: '{"result":"ok","isAuthenticated":true,"roles":["ROLE_MEMBER","IS_JWT_AUTHENTICATED","IS_AUTHENTICATED_FULLY","IS_AUTHENTICATED_ANONYMOUSLY","IS_AUTHENTICATED_REMEMBERED"],"permissions":["user.list","manga.view","chapter.view","author.view","scanlation_group.view","cover.view","manga.list","chapter.list","author.list","scanlation_group.list","cover.list"]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:27 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 3c5a793
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/auth/check
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/user/me
+    response:
+      body:
+        string: '{"result":"ok","data":{"id":"72704f84-a9ac-4078-a688-0e910b811abc","type":"user","attributes":{"username":"PokestarFan","version":5}},"relationships":[]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:28 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 3fb6391
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/user/me
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/user/me
+    response:
+      body:
+        string: '{"result":"error","errors":[{"id":"db3f44cc-0460-5d1c-9a9c-cfde7ceb26da","status":401,"title":"http_exception","detail":"Full
+        authentication is required to access this resource.","context":null}]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:28 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 3daeec3
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 401
+        message: Unauthorized
+      url: https://api.mangadex.org/user/me
+  - request:
+      body:
+        token: REFRESH_TOKEN
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+      method: POST
+      uri: https://api.mangadex.org/auth/refresh
+    response:
+      body:
+        string: '{"result":"ok","token":{"session":"session_token","refresh":"refresh"}}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:28 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        WWW-Authenticate:
+          - ''
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 6b3db56
+        x-frame-options:
+          - DENY
+        x-ratelimit-limit:
+          - '30'
+        x-ratelimit-remaining:
+          - '17'
+        x-ratelimit-retry-after:
+          - '1622383151'
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 401
+        message: Unauthorized
+      url: https://api.mangadex.org/auth/refresh
+  - request:
+      body:
+        password: PASSWORD
+        username: USERNAME
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+      method: POST
+      uri: https://api.mangadex.org/auth/login
+    response:
+      body:
+        string: '{"result":"ok","token":{"session":"session_token","refresh":"refresh"}}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:29 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - 8a296ef
+        x-frame-options:
+          - DENY
+        x-ratelimit-limit:
+          - '30'
+        x-ratelimit-remaining:
+          - '15'
+        x-ratelimit-retry-after:
+          - '1622383150'
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/auth/login
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/auth/check
+    response:
+      body:
+        string: '{"result":"ok","isAuthenticated":true,"roles":["ROLE_MEMBER","IS_JWT_AUTHENTICATED","IS_AUTHENTICATED_FULLY","IS_AUTHENTICATED_ANONYMOUSLY","IS_AUTHENTICATED_REMEMBERED"],"permissions":["user.list","manga.view","chapter.view","author.view","scanlation_group.view","cover.view","manga.list","chapter.list","author.list","scanlation_group.list","cover.list"]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:29 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - e1e4d3d
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/auth/check
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/user/me
+    response:
+      body:
+        string: '{"result":"ok","data":{"id":"72704f84-a9ac-4078-a688-0e910b811abc","type":"user","attributes":{"username":"PokestarFan","version":5}},"relationships":[]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:29 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - e3c0d9e
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/user/me
+  - request:
+      body: null
+      headers:
+        Cookie:
+          - __ddg1=U3U5tMZalgwNrvNKVjkY
+        authorization:
+          - AUTHORIZATION
+      method: GET
+      uri: https://api.mangadex.org/user/me
+    response:
+      body:
+        string: '{"result":"ok","data":{"id":"72704f84-a9ac-4078-a688-0e910b811abc","type":"user","attributes":{"username":"PokestarFan","version":5}},"relationships":[]}'
+      headers:
+        Access-Control-Allow-Credentials:
+          - 'true'
+        Access-Control-Expose-Headers:
+          - Retry-After,X-RateLimit-Remaining,X-RateLimit-Retry-After,X-RateLimit-Limit,X-Cache-SiteKey,X-Correlation-ID
+        Cache-Control:
+          - no-cache, private
+        Connection:
+          - keep-alive
+        Content-Security-Policy:
+          - upgrade-insecure-requests;
+        Content-Type:
+          - application/json
+        Date:
+          - Sun, 30 May 2021 13:50:30 GMT
+        Keep-Alive:
+          - timeout=60
+        Server:
+          - ddos-guard
+        Transfer-Encoding:
+          - chunked
+        referrer-policy:
+          - strict-origin
+        x-content-type-options:
+          - nosniff
+        x-correlation-id:
+          - dcc86ee
+        x-frame-options:
+          - DENY
+        x-xss-protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      url: https://api.mangadex.org/user/me
+version: 1

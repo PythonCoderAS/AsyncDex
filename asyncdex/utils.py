@@ -44,8 +44,10 @@ class AttrDict(Dict[str, _VT], Generic[_VT]):
         :type item: str
         :return: The value that is held inside the dictionary.
         :rtype: Any
-        :raises: :class:`KeyError` if the attribute does not exist in the key.
+        :raises: :class:`AttributeError` if the attribute does not exist in the dict.
         """
+        if item not in self:
+            raise AttributeError(item)
         return self[item]
 
     def __setattr__(self, key: str, value: _VT):

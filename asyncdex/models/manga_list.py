@@ -45,3 +45,11 @@ class MangaList(ModelList["Manga"]):
         :raises: :class:`.Unauthorized` is authentication is missing.
         """
         await asyncio.gather(*[item.set_reading_status(status) for item in self])
+
+    async def get_covers(self):
+        """Fetches cover data for all primary covers in the manga list. This is an easy way to get the covers for 50
+        different mangas without making 50 network requests.
+
+        .. versionadded:: 1.0
+        """
+        await self.client.batch_covers(*[manga.cover for manga in self])

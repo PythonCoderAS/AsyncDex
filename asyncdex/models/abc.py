@@ -167,11 +167,15 @@ class ModelList(ABC, List[_T], Generic[_T]):
         """Fetch all models.
 
         .. versionadded:: 0.5
+
+        .. versionchanged:: 1.0
+            Added support for batching covers.
         """
         from .manga import Manga
         from .chapter import Chapter
         from .group import Group
         from .author import Author
+        from .cover_art import CoverArt
 
         if self:
             if isinstance(self[0], Manga):
@@ -182,6 +186,8 @@ class ModelList(ABC, List[_T], Generic[_T]):
                 await self[0].client.batch_groups(*self)
             elif isinstance(self[0], Author):
                 await self[0].client.batch_authors(*self)
+            elif isinstance(self[0], CoverArt):
+                await self[0].client.batch_covers(*self)
             else:
                 await asyncio.gather(*[asyncio.create_task(item.fetch()) for item in self])
 

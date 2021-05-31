@@ -15,12 +15,14 @@ Added
 * :meth:`.get_cover`
 * :meth:`.batch_covers`
 * :attr:`.Manga.cover`
-* :meth:`.get_covers`
+* :meth:`MangadexClient.get_covers`
 * :meth:`.create_cover`
 * :class:`.CoverListOrder`
 * :meth:`.parse_relationships` can now parse :class:`.CoverArt` models.
 * :class:`.CoverList`
 * :attr:`.Manga.covers`
+* :attr:`.ContentRating.NO_RATING`
+* :meth:`.MangaList.get_covers`
 
 Changed
 +++++++
@@ -29,6 +31,7 @@ Changed
 * :attr:`.HTTPException.response` may be ``None``.
 * :class:`.HTTPException` is now a subclass of :class:`aiohttp.ClientResponseError`.
 * :meth:`.request` will raise :class:`.HTTPException`.
+* :meth:`.ModelList.fetch_all` will use :meth:`.batch_covers`.
 
 Deprecated
 ++++++++++
@@ -43,6 +46,12 @@ Fixed
 * Added the version to :meth:`.Group.update`.
 * Fixed a bug in :meth:`.Pager.__anext__` that threw Exceptions if the server response was empty.
 * Fixed a bug where list orders were not being correctly applied.
+* Fixed a bug where trying to log in without a username and password but with a refresh token would make a network request.
+* Fixed an erroneous ``await`` call that would very rarely lead to exceptions.
+* Fixed a bug where a new refresh token would be fetched if the session token was ``None``.
+* Fixed a bug where invalid session/refresh tokens would cause an infinite loop.
+* Fixed a bug where the refresh token and session token being invalid would cause a loop and result in an exception being raised.
+* Fixed a bug in :class:`.AttrDict` where :func:`hasattr` and :func:`getattr` would raise KeyErrors.
 
 Removed
 +++++++

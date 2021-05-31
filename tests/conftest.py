@@ -1,13 +1,17 @@
+import logging
 import os
 from typing import Any, Dict, Union
 
 import pytest
 
+logging.getLogger("vcr").setLevel(logging.WARNING)
+
 
 def before_record_response(response: Dict[str, Union[Dict[str, Any], Any]]):
     if response["url"] in ["https://api.mangadex.org/auth/login", "https://api.mangadex.org/auth/refresh"]:
-        response['body']['string'] = '{"result":"ok","token":{"session":"session_token","refresh":"refresh"}}'
+        response["body"]["string"] = '{"result":"ok","token":{"session":"session_token","refresh":"refresh"}}'
     return response
+
 
 @pytest.fixture(scope="session")
 def vcr_config():

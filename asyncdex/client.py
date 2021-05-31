@@ -320,6 +320,8 @@ class MangadexClient:
         self._session_token_acquired: Optional[datetime] = datetime(year=2000, month=1, day=1)
         # This is the time when the token is acquired. The client will automatically vacate the token at 15 minutes
         # and 10 seconds.
+        self._request_tried_refresh_token = False
+        # This is needed so the request method does not enter an infinite loop with the refresh token
 
     async def __aenter__(self):
         """Allow the client to be used with ``async with`` syntax similar to :class:`aiohttp.ClientSession`."""
@@ -452,17 +454,22 @@ class MangadexClient:
             except Exception:
                 pass
             if resp.status == 401:  # Unauthorized
-                if self.session_token:  # Invalid session token
+                if self.refresh_token and not self._request_tried_refresh_token:  # Invalid session token
+                    self._request_tried_refresh_token = True
                     await self.get_session_token()
                     do_retry = True
+                    self._request_tried_refresh_token = False
                 elif self.username and self.password:  # Invalid refresh token
                     await self.login()
+                    if path_obj.path.name == "/auth/refresh":
+                        return  # Just drop it for now because the login endpoint took care of it
                     do_retry = True
                 else:
                     try:
                         raise Unauthorized(method, url, resp)
                     finally:
-                        await resp.close()
+                        self._request_tried_refresh_token = False
+                        resp.close()
             elif resp.status in [403, 412]:
                 site_key = resp.headers.get("X-Captcha-Sitekey", "")
                 if site_key:
@@ -571,8 +578,10 @@ class MangadexClient:
     async def get_session_token(self):
         """Get the session token and store it inside the client."""
         if self.refresh_token is None:
-            await self.login()
+            return await self.login()
         r = await self.request("POST", routes["session_token"], json={"token": self.refresh_token}, with_auth=False)
+        if r is None:
+            return
         data = await r.json()
         r.close()
         self.session_token = data["token"]["session"]
@@ -597,7 +606,7 @@ class MangadexClient:
             self.password = password
             self.anonymous_mode = False
         elif not (self.username and self.password):
-            self.raise_exception_if_not_authenticated("POST", routes["login"])
+            raise Unauthorized("POST", routes["login"], None)
         r = await self.request(
             "POST", routes["login"], json={"username": self.username, "password": self.password}, with_auth=False
         )

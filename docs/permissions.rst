@@ -21,7 +21,7 @@ By default, anonymous (logged out) users have this set of permissions:
 * ``scanlation_group.list``
 * ``scanlation_group.view``
 
-This allows them to both view individual authors, chapters, mangas, and scanlation groups as well as use the listing endpoints. These permissions are checked by :meth:`.Author.fetch`, :meth:`.CoverArt.fetch`, :meth:`.Chapter.fetch`, :meth:`.Group.fetch` and :meth:`.Manga.fetch`, as well as :meth:`.get_authors`, :meth:`.get_covers`, :meth:`.get_chapters`, :meth:`.get_groups` and :meth:`.get_mangas`/:attr:`.search`.
+This allows them to both view individual authors, chapters, mangas, and scanlation groups as well as use the listing endpoints. These permissions are checked by :meth:`.Author.fetch`, :meth:`.CoverArt.fetch`, :meth:`.Chapter.fetch`, :meth:`.Group.fetch` and :meth:`.Manga.fetch`, as well as :meth:`.get_authors`, :meth:`.MangadexClient.get_covers`, :meth:`.get_chapters`, :meth:`.get_groups` and :meth:`.get_mangas`/:attr:`.search`.
 
 Logged in Permissions
 +++++++++++++++++++++

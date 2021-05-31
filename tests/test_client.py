@@ -64,9 +64,8 @@ class TestConstructor:
         assert not client.session_token
         await client.close()
 
+
 class TestDunder:
-
-
     @pytest.mark.asyncio
     async def test_async_with(self):
         async with MangadexClient(username="Test", password="Test") as client:
@@ -82,7 +81,6 @@ class TestDunder:
             assert not client.refresh_token
             assert not client.session_token
 
-
     @pytest.mark.asyncio
     async def test_repr(self):
         async with MangadexClient(username="Test", password="Test") as client:
@@ -90,7 +88,6 @@ class TestDunder:
 
 
 class TestAuth:
-
     @pytest.mark.asyncio
     async def test_unauthorized_exception(self):
         async with MangadexClient() as client:
@@ -104,17 +101,60 @@ class TestAuth:
             await client.login()
             assert client.session_token
             assert client.user.id != "client-user"
-            assert client.user.permissions == ['user.list',
-                                               'manga.view',
-                                               'chapter.view',
-                                               'author.view',
-                                               'scanlation_group.view',
-                                               'cover.view',
-                                               'manga.list',
-                                               'chapter.list',
-                                               'author.list',
-                                               'scanlation_group.list',
-                                               'cover.list']
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
+
+    @pytest.mark.asyncio
+    @pytest.mark.vcr()
+    async def test_login_username_password(self, username, password):
+        async with MangadexClient() as client:
+            await client.login(username, password)
+            assert client.session_token
+            assert client.user.id != "client-user"
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
+
+    @pytest.mark.asyncio
+    async def test_login_username_or_password(self):
+        async with MangadexClient() as client:
+            with pytest.raises(ValueError):
+                await client.login(username="Test")
+            with pytest.raises(ValueError):
+                await client.login(password="Test")
+
+    @pytest.mark.asyncio
+    async def test_login_no_creds(self):
+        async with MangadexClient() as client:
+            with pytest.raises(Unauthorized):
+                await client.login()
+
+    @pytest.mark.asyncio
+    async def test_login_no_creds_refresh_token(self, refresh_token):
+        async with MangadexClient(refresh_token=refresh_token) as client:
+            with pytest.raises(Unauthorized):
+                await client.login()
 
     @pytest.mark.asyncio
     @pytest.mark.vcr()
@@ -123,17 +163,19 @@ class TestAuth:
             await client.get_session_token()
             assert client.session_token
             assert client.user.id != "client-user"
-            assert client.user.permissions == ['user.list',
-                                               'manga.view',
-                                               'chapter.view',
-                                               'author.view',
-                                               'scanlation_group.view',
-                                               'cover.view',
-                                               'manga.list',
-                                               'chapter.list',
-                                               'author.list',
-                                               'scanlation_group.list',
-                                               'cover.list']
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
 
     @pytest.mark.asyncio
     @pytest.mark.vcr()
@@ -142,17 +184,19 @@ class TestAuth:
             await client.login()
             assert client.session_token
             assert client.user.id != "client-user"
-            assert client.user.permissions == ['user.list',
-                                               'manga.view',
-                                               'chapter.view',
-                                               'author.view',
-                                               'scanlation_group.view',
-                                               'cover.view',
-                                               'manga.list',
-                                               'chapter.list',
-                                               'author.list',
-                                               'scanlation_group.list',
-                                               'cover.list']
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
             client.session_token = None
             assert not client.session_token
             await client.get_session_token()
@@ -176,17 +220,19 @@ class TestAuth:
             await client.ping()
             assert client.session_token
             assert client.user.id != "client-user"
-            assert client.user.permissions == ['user.list',
-                                               'manga.view',
-                                               'chapter.view',
-                                               'author.view',
-                                               'scanlation_group.view',
-                                               'cover.view',
-                                               'manga.list',
-                                               'chapter.list',
-                                               'author.list',
-                                               'scanlation_group.list',
-                                               'cover.list']
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
 
     @pytest.mark.asyncio
     @pytest.mark.vcr()
@@ -195,17 +241,39 @@ class TestAuth:
             await client.ping()
             assert client.session_token
             assert client.user.id != "client-user"
-            assert client.user.permissions == ['user.list',
-                                               'manga.view',
-                                               'chapter.view',
-                                               'author.view',
-                                               'scanlation_group.view',
-                                               'cover.view',
-                                               'manga.list',
-                                               'chapter.list',
-                                               'author.list',
-                                               'scanlation_group.list',
-                                               'cover.list']
+            assert client.user.permissions == [
+                "user.list",
+                "manga.view",
+                "chapter.view",
+                "author.view",
+                "scanlation_group.view",
+                "cover.view",
+                "manga.list",
+                "chapter.list",
+                "author.list",
+                "scanlation_group.list",
+                "cover.list",
+            ]
+
+    @pytest.mark.asyncio
+    @pytest.mark.vcr()
+    async def test_auto_renew_session_token(self, username, password):
+        async with MangadexClient(username=username, password=password) as client:
+            await client.user.fetch()
+            client.session_token = "blah"
+            await client.user.fetch_user()
+            assert client.session_token != "blah"
+
+    @pytest.mark.asyncio
+    @pytest.mark.vcr()
+    async def test_auto_renew_login(self, username, password):
+        async with MangadexClient(username=username, password=password) as client:
+            await client.user.fetch()
+            client.session_token = "blah"
+            client.refresh_token = "blah"
+            await client.user.fetch_user()
+            assert client.session_token != "blah"
+            assert client.refresh_token != "blah"
 
 
 class TestGetIndividual:
@@ -215,20 +283,17 @@ class TestGetIndividual:
             manga = client.get_manga("Test")
             assert isinstance(manga, Manga)
 
-
     @pytest.mark.asyncio
     async def test_get_author(self):
         async with MangadexClient() as client:
             author = client.get_author("Test")
             assert isinstance(author, Author)
 
-
     @pytest.mark.asyncio
     async def test_get_group(self):
         async with MangadexClient() as client:
             group = client.get_group("Test")
             assert isinstance(group, Group)
-
 
     @pytest.mark.asyncio
     async def test_get_chapter(self):
@@ -238,7 +303,6 @@ class TestGetIndividual:
 
 
 class TestEnvVars:
-
     @pytest.mark.asyncio
     async def test_init_env_var(self, monkeypatch):
         monkeypatch.setenv("asyncdex_username", "test")
@@ -250,7 +314,6 @@ class TestEnvVars:
             assert client.password
             assert client.refresh_token
             assert not client.session_token
-
 
     @pytest.mark.asyncio
     async def test_init_env_var_alternate_names(self, monkeypatch):
@@ -266,7 +329,6 @@ class TestEnvVars:
             assert client.refresh_token
             assert not client.session_token
 
-
     @pytest.mark.asyncio
     async def test_init_env_var_anonymous(self, monkeypatch):
         monkeypatch.delenv("asyncdex_username", raising=False)
@@ -278,7 +340,6 @@ class TestEnvVars:
             assert not client.password
             assert not client.refresh_token
             assert not client.session_token
-
 
     @pytest.mark.asyncio
     async def test_init_env_var_boolean(self, monkeypatch):
@@ -305,7 +366,6 @@ class TestEnvVars:
             assert not client.refresh_token
             assert not client.session_token
 
-
     @pytest.mark.asyncio
     async def test_init_env_var_refresh_token_only(self, monkeypatch):
         monkeypatch.delenv("asyncdex_username", raising=False)
@@ -318,8 +378,8 @@ class TestEnvVars:
             assert client.refresh_token
             assert not client.session_token
 
+
 class TestConfig:
-    
     @property
     def file_path(self):
         return abspath(join(__file__, "..", "data", "test.ini"))
@@ -335,8 +395,7 @@ class TestConfig:
 
     @pytest.mark.asyncio
     async def test_config_file_custom_name(self):
-        async with MangadexClient.from_config(self.file_path, section_name="asyncdex_custom_name") as \
-                client:
+        async with MangadexClient.from_config(self.file_path, section_name="asyncdex_custom_name") as client:
             assert not client.anonymous_mode
             assert client.username
             assert client.password
@@ -352,11 +411,9 @@ class TestConfig:
             assert not client.refresh_token
             assert not client.session_token
 
-
     @pytest.mark.asyncio
     async def test_config_file_anonymous_mode(self):
-        async with MangadexClient.from_config(self.file_path, section_name="asyncdex_anonymous_mode") as \
-                client:
+        async with MangadexClient.from_config(self.file_path, section_name="asyncdex_anonymous_mode") as client:
             assert client.anonymous_mode
             assert not client.username
             assert not client.password
@@ -365,8 +422,9 @@ class TestConfig:
 
     @pytest.mark.asyncio
     async def test_config_file_username_password_only(self):
-        async with MangadexClient.from_config(self.file_path,
-                                              section_name="asyncdex_username_and_password_only") as client:
+        async with MangadexClient.from_config(
+            self.file_path, section_name="asyncdex_username_and_password_only"
+        ) as client:
             assert not client.anonymous_mode
             assert client.username
             assert client.password
@@ -375,16 +433,15 @@ class TestConfig:
 
     @pytest.mark.asyncio
     async def test_config_file_refresh_token_only(self):
-        async with MangadexClient.from_config(self.file_path,
-                                              section_name="asyncdex_refresh_token_only") as client:
+        async with MangadexClient.from_config(self.file_path, section_name="asyncdex_refresh_token_only") as client:
             assert not client.anonymous_mode
             assert not client.username
             assert not client.password
             assert client.refresh_token
             assert not client.session_token
 
+
 class TestJSON:
-    
     def file_path(self, suffix: Optional[str] = None):
         filename = "test"
         if suffix:
