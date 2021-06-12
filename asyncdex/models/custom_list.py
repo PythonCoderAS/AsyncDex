@@ -49,8 +49,7 @@ class CustomList(Model):
             self._parse_relationships(data)
 
     async def fetch(self):
-        """Fetch data about the list. |auth|"""
-        self.client.raise_exception_if_not_authenticated("GET", routes["list"])
+        """Fetch data about the list."""
         await self._fetch(None, "list")
 
     async def load_mangas(self):

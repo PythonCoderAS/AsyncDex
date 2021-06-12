@@ -11,6 +11,10 @@ class VolumeAggregate(Dict[Optional[str], int]):
         a total count is given including the no-number chapters, which can be used to infer the number of chapters
         without a number. This number is stored as the ``None`` key.
 
+    .. versionchanged:: 1.1
+        The server now returns the actual count for chapters without a number. This can still be found in the
+        ``None`` key.
+
     Usage:
 
     .. code-block:: python
@@ -41,9 +45,9 @@ class VolumeAggregate(Dict[Optional[str], int]):
         total_count = data["count"]
         if isinstance(data["chapters"], dict):
             for item in data["chapters"].values():
+                if item["chapter"] == "none":
+                    item["chapter"] = None
                 self[item["chapter"]] = item["count"]
-        if self.total() != total_count:
-            self[None] = total_count - self.total()
 
     def __repr__(self) -> str:
         """Provide a string representation of the object.
@@ -89,7 +93,7 @@ class MangaAggregate(Dict[Optional[str], VolumeAggregate]):
     def parse(self, data: Dict[str, Any]):
         """Parse aggregate data."""
         for key, value in data["volumes"].items():
-            if key == "N/A":
+            if key == "none":
                 key = None
             va = VolumeAggregate()
             va.parse(value)

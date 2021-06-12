@@ -359,6 +359,7 @@ class Manga(Model, DatetimeMixin):
             self.chapters = ChapterList(self)
             if hasattr(self, "_covers"):
                 self.cover = self._covers[0]
+                self.cover.manga = self
                 del self._covers
 
     async def fetch(self):

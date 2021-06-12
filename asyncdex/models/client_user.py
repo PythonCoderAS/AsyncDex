@@ -9,7 +9,7 @@ from .pager import Pager
 from .user import User
 from ..constants import routes
 from ..exceptions import PermissionMismatch
-from ..list_orders import MangaFeedListOrder
+from ..list_orders import UserFollowsMangaFeedListOrder
 from ..utils import return_date_string
 
 if TYPE_CHECKING:
@@ -151,7 +151,7 @@ class ClientUser(User):
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
         published_after: Optional[datetime] = None,
-        order: Optional[MangaFeedListOrder] = None,
+        order: Optional[UserFollowsMangaFeedListOrder] = None,
         limit: Optional[int] = None,
     ) -> Pager[Chapter]:
         """Get the chapters from the manga that the logged in user is following. |auth|
@@ -182,7 +182,11 @@ class ClientUser(User):
 
         :type published_after: datetime
         :param order: The order to sort the chapters.
-        :type order: MangaFeedListOrder
+
+            .. versionchanged:: 1.1
+                The type for the order parameter was changed from :class:`.MangaFeedListOrder` to
+                :class:`.UserFollowsMangaFeedListOrder`.
+        :type order: UserFollowsMangaFeedListOrder
         :param limit: Only return up to this many chapters.
 
             .. note::

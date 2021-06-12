@@ -10,7 +10,7 @@ from typing import Any, BinaryIO, Callable, Dict, List, Mapping, Optional, Seque
 
 import aiohttp
 
-from .constants import ratelimit_data, routes
+from .constants import permission_model_mapping, ratelimit_data, routes
 from .enum import ContentRating, Demographic, MangaStatus, TagMode
 from .exceptions import Captcha, HTTPException, InvalidCaptcha, InvalidID, Ratelimit, Unauthorized
 from .list_orders import AuthorListOrder, ChapterListOrder, CoverListOrder, GroupListOrder, MangaListOrder
@@ -356,6 +356,7 @@ class MangadexClient:
         with_auth: bool = True,
         retries: int = 3,
         allow_non_successful_codes: bool = False,
+        add_includes: bool = False,
         **session_request_kwargs,
     ) -> aiohttp.ClientResponse:
         """Perform a request.
@@ -393,18 +394,28 @@ class MangadexClient:
             from the original count until retries run out.
         :type retries: int
         :param allow_non_successful_codes: Whether or not to allow non-success codes (4xx codes that aren't 401/429)
-            to pass through instead of raising an error. False by default
+            to pass through instead of raising an error. Defaults to ``False``.
         :type allow_non_successful_codes: bool
+        :param add_includes: Whether or not to add the list of allowed reference expansions to the request. Defaults
+            to ``False``.
+        :type add_includes: bool
         :param session_request_kwargs: Optional keyword arguments to pass to :meth:`aiohttp.ClientSession.request`.
         :raises: :class:`.Unauthorized` if the endpoint requires authentication and sufficient parameters for
             authentication were not provided to the client.
         :raises: :class`aiohttp.ClientResponseError` if the response is a 4xx or 5xx code after multiple retries or
-            if it will not be retried and ``allow_non_successful_codes`` is False.
+            if it will not be retried and ``allow_non_successful_codes`` is ``False``.
         :return: The response.
         :rtype: aiohttp.ClientResponse
         """
         if url.startswith("/"):  # Add the base URL if the base URL is not an absolute URL.
             url = self.api_base + url
+        params = dict(params) if params else {}
+        if add_includes:
+            includes = []
+            for key, val in permission_model_mapping.items():
+                if self.user.permission_check(key):
+                    includes.append(val)
+            params["includes"] = includes
         if params:
             # Strategy: Put all the parts into a list, and then use "&".join(<arr>) to add all the parts together
             param_parts = []
@@ -735,7 +746,7 @@ class MangadexClient:
         :return: A random manga.
         :rtype: Manga
         """
-        r = await self.request("GET", routes["random_manga"])
+        r = await self.request("GET", routes["random_manga"], add_includes=True)
         try:
             return Manga(self, data=await r.json())
         finally:
@@ -857,7 +868,7 @@ class MangadexClient:
             uuids = uuids[100:]
             req_list.append(
                 asyncio.create_task(
-                    self._get_json("GET", routes[route_name], params=dict(limit=100, ids=uuids_for_this_batch))
+                    self._get_json("GET", routes[route_name], params=dict(limit=100, ids=uuids_for_this_batch, add_includes=True))
                 )
             )
         data = await asyncio.gather(*req_list)
@@ -999,8 +1010,8 @@ class MangadexClient:
         groups: Optional[Sequence[Union[str, Group]]] = None,
         uploader: Optional[Union[str, User]] = None,
         manga: Optional[Union[str, Manga]] = None,
-        volume: Optional[str] = None,
-        chapter_number: Optional[str] = None,
+        volume: Optional[Union[str, List[Optional[str]]]] = None,
+        chapter_number: Optional[Union[str, List[Optional[str]]]] = None,
         language: Optional[str] = None,
         created_after: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
@@ -1035,9 +1046,23 @@ class MangadexClient:
 
         :type manga: Union[str, Manga]
         :param volume: The volume that the chapter belongs to.
-        :type volume: str
+
+            .. versionchanged:: 1.1
+                Allowed passing in a list of volumes.
+
+            .. note::
+                If you only want to filter out chapters without a volume (null volume), you **have** to supply a list
+                containing a ``None`` value.
+        :type volume: Union[str, List[Optional[str]]]
         :param chapter_number: The number of the chapter.
-        :type chapter_number: str
+
+            .. versionchanged:: 1.1
+                Allowed passing in a list of chapter numbers.
+
+            .. note::
+                If you only want to filter out chapters without a number (null number), you **have** to supply a list
+                containing a ``None`` value.
+        :type chapter_number: Union[str, List[Optional[str]]]
         :param language: The language of the chapter.
         :type language: str
         :param created_after: Get chapters created after this date.
@@ -1083,9 +1108,9 @@ class MangadexClient:
         if manga:
             params["manga"] = str(manga)
         if volume:
-            params["volume"] = volume
+            params["volume"] = [volume] if isinstance(volume, str) else volume
         if chapter_number:
-            params["chapter"] = chapter_number
+            params["chapter"] = [chapter_number] if isinstance(chapter_number, str) else chapter_number
         if language:
             params["translatedLanguage"] = language
         if created_after:

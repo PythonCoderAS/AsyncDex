@@ -144,6 +144,9 @@ Constants
 .. autodata:: asyncdex.constants.link_name_to_attribute_mapping
     :no-value:
 
+.. autodata:: asyncdex.constants.permission_model_mapping
+    :no-value:
+
 .. autodata:: asyncdex.constants.ratelimit_data
     :no-value:
 
@@ -210,6 +213,9 @@ List Orders
     :members:
 
 .. autoclass:: asyncdex.list_orders.MangaFeedListOrder
+    :members:
+
+.. autoclass:: asyncdex.list_orders.UserFollowsMangaFeedListOrder
     :members:
 
 Model Containers

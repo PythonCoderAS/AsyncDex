@@ -111,7 +111,7 @@ class Pager(AsyncIterator[_ModelT], Generic[_ModelT]):
 
     async def _do_request(self, offset=None):
         offset = offset or self.params["offset"]
-        r = await self.client.request("GET", self.url, params={**self.params, "offset": offset})
+        r = await self.client.request("GET", self.url, params={**self.params, "offset": offset}, add_includes=True)
         if r.status == 204:
             self._done = True
             raise StopAsyncIteration

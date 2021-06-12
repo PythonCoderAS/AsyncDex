@@ -165,3 +165,16 @@ be modified without copy-pasting the route to the functions using it.
 .. versionchanged:: 0.4
     ``mdah`` renamed to ``md@h``.
 """
+
+permission_model_mapping: Dict[str, str] = {
+    "author.view": "author",
+    "chapter.view": "chapter",
+    "cover.view": "cover_art",
+    "manga.view": "manga",
+    "scanlation_group.view": "scanlation_group",
+    "user.view": "user"
+}
+"""A mapping containing permission names to the type of model. Used for reference expansion.
+
+.. versionadded:: 1.1
+"""

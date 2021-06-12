@@ -63,6 +63,8 @@ class CoverArt(Model, DatetimeMixin):
         if "data" in data and "attributes" in data["data"]:
             attributes = data["data"]["attributes"]
             copy_key_to_attribute(attributes, "name", self)
+            copy_key_to_attribute(attributes, "fileName", self, "file_name")
+            copy_key_to_attribute(attributes, "volume", self)
             self._process_times(attributes)
         self._parse_relationships(data)
         if hasattr(self, "_users"):

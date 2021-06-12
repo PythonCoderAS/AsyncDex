@@ -119,3 +119,21 @@ class MangaFeedListOrder:
 
     chapter: Optional[OrderDirection] = None
     """The chapter number of a chapter."""
+
+
+@dataclass(frozen=True)
+class UserFollowsMangaFeedListOrder(MangaFeedListOrder):
+    """An object representing the various options for ordering a manga feed list returned from the user followed
+    manga feed.
+
+    .. versionadded:: 1.1
+    """
+
+    creation_time: Optional[OrderDirection] = None
+    """The time a chapter was created."""
+
+    update_time: Optional[OrderDirection] = None
+    """The time a chapter was updated."""
+
+    publish_time: Optional[OrderDirection] = None
+    """The time a chapter was published."""

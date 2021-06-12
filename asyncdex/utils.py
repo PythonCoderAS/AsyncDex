@@ -184,6 +184,7 @@ def parse_relationships(data: dict, obj: "Model"):
     # Notes for future contributors: As of May 7, the MangaDex API has a quirk where it sends the same relationship
     # (same UUID and same type) multiple times. Until this bug is fixed, I had to check that each UUID was unique.
     from .models.abc import GenericModelList
+    from .models import Manga, Author, Chapter, User, Group, CoverArt
 
     relationship_data = defaultdict(GenericModelList)
     seen_uuids = defaultdict(list)
@@ -192,42 +193,43 @@ def parse_relationships(data: dict, obj: "Model"):
             assert "id" in relationship, "Missing ID."
             relationship_id = relationship["id"]
             relationship_type = Relationship(relationship["type"])
+            relationship_data_dict = {"data": relationship}
             if relationship_type == Relationship.MANGA:
                 dupe_list = seen_uuids["mangas"]
                 if relationship_id not in dupe_list:
-                    relationship_data["mangas"].append(obj.client.get_manga(relationship_id))
+                    relationship_data["mangas"].append(Manga(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.AUTHOR:
                 dupe_list = seen_uuids["authors"]
                 if relationship_id not in dupe_list:
-                    relationship_data["authors"].append(obj.client.get_author(relationship_id))
+                    relationship_data["authors"].append(Author(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.ARTIST:
                 dupe_list = seen_uuids["artists"]
                 if relationship_id not in dupe_list:
-                    relationship_data["artists"].append(obj.client.get_author(relationship_id))
+                    relationship_data["artists"].append(Author(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.CHAPTER:
                 dupe_list = seen_uuids["chapters"]
                 if relationship_id not in dupe_list:
-                    relationship_data["chapters"].append(obj.client.get_chapter(relationship_id))
+                    relationship_data["chapters"].append(Chapter(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.USER:
                 dupe_list = seen_uuids["users"]
                 if relationship_id not in dupe_list:
-                    relationship_data["_users"].append(obj.client.get_user(relationship_id))
+                    relationship_data["_users"].append(User(obj.client, data=relationship_data_dict))
                     # Why `_users`? Because we never want a variable called users. All objects returning user
                     # relationships will not have a variable called users.
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.SCANLATION_GROUP:
                 dupe_list = seen_uuids["groups"]
                 if relationship_id not in dupe_list:
-                    relationship_data["groups"].append(obj.client.get_group(relationship_id))
+                    relationship_data["groups"].append(Group(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
             elif relationship_type == Relationship.COVER_ART:
                 dupe_list = seen_uuids["covers"]
                 if relationship_id not in dupe_list:
-                    relationship_data["_covers"].append(obj.client.get_cover(relationship_id))
+                    relationship_data["_covers"].append(CoverArt(obj.client, data=relationship_data_dict))
                     dupe_list.append(relationship_id)
     for key, value in relationship_data.items():
         setattr(obj, key, value)

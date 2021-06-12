@@ -130,7 +130,7 @@ class Model(ABC):
     async def _fetch(self, permission: Optional[str], route_name: str):
         if permission:
             self.client.user.permission_exception(permission, "GET", routes[route_name])
-        r = await self.client.request("GET", routes[route_name].format(id=self.id))
+        r = await self.client.request("GET", routes[route_name].format(id=self.id), add_includes=True)
         self._check_404(r)
         self.parse(await r.json())
         r.close()

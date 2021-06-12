@@ -1,6 +1,58 @@
 Changelog
 #########
 
+v1.1
+----
+
+Added
++++++
+
+* :class:`.UserFollowsMangaFeedListOrder`
+* Parameter ``add_includes`` to :meth:`.request` to automatically add the reference expansion parameters in as long as the user has the permissions required.
+* :data:`.permission_model_mapping`
+* Methods that now expand references:
+    * :meth:`.random_manga`
+    * :meth:`.Author.fetch`
+    * :meth:`.Chapter.fetch`
+    * :meth:`.CoverArt.fetch`
+    * :meth:`.CustomList.fetch`
+    * :meth:`.Group.fetch`
+    * :meth:`.Manga.fetch`
+    * :meth:`.User.fetch`
+    * :meth:`.batch_authors`
+    * :meth:`.batch_chapters`
+    * :meth:`.batch_covers`
+    * :meth:`.batch_groups`
+    * :meth:`.batch_mangas`
+    * :meth:`.get_authors`
+    * :meth:`.get_chapters`
+    * :meth:`.MangadexClient.get_covers`
+    * :meth:`.get_groups`
+    * :meth:`.get_mangas`
+    * :meth:`.ChapterList.get`
+    * :meth:`.ClientUser.groups`
+    * :meth:`.ClientUser.lists`
+    * :meth:`.ClientUser.manga`
+    * :meth:`.ClientUser.manga_chapters`
+    * :meth:`.ClientUser.users`
+    * :meth:`.CustomList.manga_chapters`
+
+Changed
++++++++
+
+* :meth:`.CustomList.fetch` no longer requires authentication if the list is a public list.
+* The :attr:`.CoverArt.manga` attribute will be assigned to the manga that owns the cover art, if it is created by :meth:`.Manga.fetch`.
+* Parameters ``volume`` and ``chapter_number`` of :meth:`.get_chapters` now accept a list of strings to select multiple volume/chapters.
+* :func:`.parse_relationships` will now make objects using the reference expansion data.
+
+
+Fixed
++++++
+
+* :class:`.VolumeAggregate` will correctly return values for null chapters.
+* :class:`.MangaAggregate` will correctly return values for null volumes.
+* Fixed an issue where CoverArt instances did not correctly assign attributes.
+
 v1.0
 ----
 
